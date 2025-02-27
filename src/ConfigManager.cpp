@@ -1,6 +1,7 @@
 // ConfigManager.cpp
 
 #include "ConfigManager.hpp"
+#include "DefaultConfig.hpp"
 #include <nlohmann/json.hpp>
 #include <mutex>
 #include <fstream>
@@ -16,12 +17,6 @@ namespace
     bool loadSectionExists(const nm::json &j, const std::string &section);
     void loadLinkProperties(const nm::json &j, Config::LinkProperties &props, const Config::LinkProperties &defaults);
     void loadSection(const nm::json &j, const std::string &sectionName, Config::LinkProperties &target, const Config::LinkProperties &defaults);
-
-    // Default values
-    constexpr const Config::LinkProperties DEFAULT_EARTH_TO_EARTH{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    constexpr const Config::LinkProperties DEFAULT_EARTH_TO_MOON{1280.0, 100.0, 50.0, 1e-5, 5e-6, 1.0, 0.5, 500.0, 100.0, 0.0};
-    constexpr const Config::LinkProperties DEFAULT_MOON_TO_EARTH{1280.0, 100.0, 50.0, 1e-5, 5e-6, 1.0, 0.5, 500.0, 100.0, 7.5};
-    constexpr const Config::LinkProperties DEFAULT_MOON_TO_MOON{30.0, 10.0, 5.0, 2e-6, 1e-6, 0.2, 0.1, 50.0, 10.0, 7.5};
 }
 
 ConfigManager::ConfigManager(const std::string &config_file) : config_file_(config_file)
