@@ -1,5 +1,26 @@
 // ConfigManager.hpp
 
+// ---- ConfigManager Usage ---- //
+
+// The constructor will attempt to load values from a JSON file.
+// If no config file is found, it will use the default values.
+// Example:
+// ConfigManager mgr = ConfigManager("config/config.json");
+
+// getConfig() is a thread-safe getter that returns a copy of config_
+// which can then be used or cached.
+// Example:
+// Config config_copy = mgr.getConfig();
+
+// Other thread-safe getters can also be used for exact link properties.
+// Example:
+// Config::LinkProperties m_to_e = mgr.getMToEConfig();
+
+// reloadConfig() can be called when the user wants to update
+// the config values from the JSON file during runtime.
+// Example:
+// mgr.reloadConfig();
+
 #pragma once
 
 #include <string>
@@ -34,12 +55,16 @@ struct Config
     LinkProperties moon_to_moon;
 };
 
-
 class ConfigManager
 {
 public:
     ConfigManager(const std::string &config_file);
+
     Config getConfig();
+    Config::LinkProperties getEToEConfig();
+    Config::LinkProperties getEToMConfig();
+    Config::LinkProperties getMToEConfig();
+    Config::LinkProperties getMToMConfig();
 
     // updates config_ with values from config file
     void reloadConfig();

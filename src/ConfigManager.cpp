@@ -45,6 +45,34 @@ Config ConfigManager::getConfig()
     return config_;
 }
 
+Config::LinkProperties ConfigManager::getEToEConfig()
+{
+    // shared lock, multiple threads can read concurrently
+    std::shared_lock<std::shared_mutex> lock(config_mutex_);
+    return config_.earth_to_earth;
+}
+
+Config::LinkProperties ConfigManager::getEToMConfig()
+{
+    // shared lock, multiple threads can read concurrently
+    std::shared_lock<std::shared_mutex> lock(config_mutex_);
+    return config_.earth_to_moon;
+}
+
+Config::LinkProperties ConfigManager::getMToEConfig()
+{
+    // shared lock, multiple threads can read concurrently
+    std::shared_lock<std::shared_mutex> lock(config_mutex_);
+    return config_.moon_to_earth;
+}
+
+Config::LinkProperties ConfigManager::getMToMConfig()
+{
+    // shared lock, multiple threads can read concurrently
+    std::shared_lock<std::shared_mutex> lock(config_mutex_);
+    return config_.moon_to_moon;
+}
+
 void ConfigManager::reloadConfig()
 {
     // Use an exclusive lock while updating the configuration.
@@ -98,13 +126,12 @@ void ConfigManager::loadDefaultConfig()
 }
 
 
-// ---- Helper function implementations ---- //
 
+
+// ---- Helper function implementations ---- //
 
 namespace
 {
-
-    namespace nm = nlohmann;
 
     // Helper function: if key is missing, log and return default.
     double getDoubleWithLog(const nm::json &j, const std::string &key, const double defaultValue)
