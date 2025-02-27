@@ -9,30 +9,19 @@
 // Anonymous namespace (to avoid cluttering global namespace)
 namespace
 {
-
     namespace nm = nlohmann;
 
-    // Helper function: if key is missing, log and return default.
-    double getDoubleWithLog(const nm::json &j, const std::string &key, const double defaultValue)
-    {
-        if (!j.contains(key))
-        {
-            std::cerr << "Key '" << key << "' not found, using default " << defaultValue << ".\n";
-            return defaultValue;
-        }
-        return j.value(key, defaultValue);
-    }
+    // Helper functions
+    double getDoubleWithLog(const nm::json &j, const std::string &key, const double defaultValue);
+    bool loadSectionExists(const nm::json &j, const std::string &section);
+    void loadLinkProperties(const nm::json &j, Config::LinkProperties &props, const Config::LinkProperties &defaults);
+    void loadSection(const nm::json &j, const std::string &sectionName, Config::LinkProperties &target, const Config::LinkProperties &defaults);
 
-    // Helper function: Load a section if available, else log an error.
-    bool loadSectionExists(const nm::json &j, const std::string &section)
-    {
-        if (!j.contains(section))
-        {
-            std::cerr << "Section '" << section << "' not found in configuration.\n";
-            return false;
-        }
-        return true;
-    }
+    // Default values
+    constexpr const Config::LinkProperties DEFAULT_EARTH_TO_EARTH{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    constexpr const Config::LinkProperties DEFAULT_EARTH_TO_MOON{1280.0, 100.0, 50.0, 1e-5, 5e-6, 1.0, 0.5, 500.0, 100.0, 0.0};
+    constexpr const Config::LinkProperties DEFAULT_MOON_TO_EARTH{1280.0, 100.0, 50.0, 1e-5, 5e-6, 1.0, 0.5, 500.0, 100.0, 7.5};
+    constexpr const Config::LinkProperties DEFAULT_MOON_TO_MOON{30.0, 10.0, 5.0, 2e-6, 1e-6, 0.2, 0.1, 50.0, 10.0, 7.5};
 }
 
 ConfigManager::ConfigManager(const std::string &config_file) : config_file_(config_file)
@@ -86,68 +75,10 @@ void ConfigManager::loadConfig()
         nm::json j;
         infile >> j;
 
-        if (loadSectionExists(j, "earth_to_earth"))
-        {
-            auto &sec = j["earth_to_earth"];
-            config_.earth_to_earth.base_latency_ms = getDoubleWithLog(sec, "base_latency_ms", 0);
-            config_.earth_to_earth.latency_jitter_ms = getDoubleWithLog(sec, "latency_jitter_ms", 0);
-            config_.earth_to_earth.latency_jitter_stddev = getDoubleWithLog(sec, "latency_jitter_stddev", 0);
-            config_.earth_to_earth.base_bit_error_rate = getDoubleWithLog(sec, "base_bit_error_rate", 0);
-            config_.earth_to_earth.bit_error_rate_stddev = getDoubleWithLog(sec, "bit_error_rate_stddev", 0);
-            config_.earth_to_earth.base_packet_loss_burst_freq_per_hour = getDoubleWithLog(sec, "base_packet_loss_burst_freq_per_hour", 0);
-            config_.earth_to_earth.packet_loss_burst_freq_stddev = getDoubleWithLog(sec, "packet_loss_burst_freq_stddev", 0);
-            config_.earth_to_earth.base_packet_loss_burst_duration_ms = getDoubleWithLog(sec, "base_packet_loss_burst_duration_ms", 0);
-            config_.earth_to_earth.base_packet_loss_burst_duration_stddev = getDoubleWithLog(sec, "base_packet_loss_burst_duration_stddev", 0);
-            config_.earth_to_earth.throughput_limit_mbps = getDoubleWithLog(sec, "throughput_limit_mbps", 0);
-        } else throw std::runtime_error("Earth to earth section missing in config file.");
-
-        // Earth to moon
-        if (loadSectionExists(j, "earth_to_moon"))
-        {
-            auto &sec = j["earth_to_moon"];
-            config_.earth_to_moon.base_latency_ms = getDoubleWithLog(sec, "base_latency_ms", 1280.0);
-            config_.earth_to_moon.latency_jitter_ms = getDoubleWithLog(sec, "latency_jitter_ms", 100.0);
-            config_.earth_to_moon.latency_jitter_stddev = getDoubleWithLog(sec, "latency_jitter_stddev", 50.0);
-            config_.earth_to_moon.base_bit_error_rate = getDoubleWithLog(sec, "base_bit_error_rate", 1e-5);
-            config_.earth_to_moon.bit_error_rate_stddev = getDoubleWithLog(sec, "bit_error_rate_stddev", 5e-6);
-            config_.earth_to_moon.base_packet_loss_burst_freq_per_hour = getDoubleWithLog(sec, "base_packet_loss_burst_freq_per_hour", 1.0);
-            config_.earth_to_moon.packet_loss_burst_freq_stddev = getDoubleWithLog(sec, "packet_loss_burst_freq_stddev", 0.5);
-            config_.earth_to_moon.base_packet_loss_burst_duration_ms = getDoubleWithLog(sec, "base_packet_loss_burst_duration_ms", 500.0);
-            config_.earth_to_moon.base_packet_loss_burst_duration_stddev = getDoubleWithLog(sec, "base_packet_loss_burst_duration_stddev", 100.0);
-            config_.earth_to_moon.throughput_limit_mbps = getDoubleWithLog(sec, "throughput_limit_mbps", 0);
-        } else throw std::runtime_error("Earth to moon section missing in config file.");
-
-        // Moon to earth
-        if (loadSectionExists(j, "moon_to_earth"))
-        {
-            auto &sec = j["moon_to_earth"];
-            config_.moon_to_earth.base_latency_ms = getDoubleWithLog(sec, "base_latency_ms", 1280.0);
-            config_.moon_to_earth.latency_jitter_ms = getDoubleWithLog(sec, "latency_jitter_ms", 100.0);
-            config_.moon_to_earth.latency_jitter_stddev = getDoubleWithLog(sec, "latency_jitter_stddev", 50.0);
-            config_.moon_to_earth.base_bit_error_rate = getDoubleWithLog(sec, "base_bit_error_rate", 1e-5);
-            config_.moon_to_earth.bit_error_rate_stddev = getDoubleWithLog(sec, "bit_error_rate_stddev", 5e-6);
-            config_.moon_to_earth.base_packet_loss_burst_freq_per_hour = getDoubleWithLog(sec, "base_packet_loss_burst_freq_per_hour", 1.0);
-            config_.moon_to_earth.packet_loss_burst_freq_stddev = getDoubleWithLog(sec, "packet_loss_burst_freq_stddev", 0.5);
-            config_.moon_to_earth.base_packet_loss_burst_duration_ms = getDoubleWithLog(sec, "base_packet_loss_burst_duration_ms", 500.0);
-            config_.moon_to_earth.base_packet_loss_burst_duration_stddev = getDoubleWithLog(sec, "base_packet_loss_burst_duration_stddev", 100.0);
-            config_.moon_to_earth.throughput_limit_mbps = getDoubleWithLog(sec, "throughput_limit_mbps", 7.5);
-        } else throw std::runtime_error("Moon to earth section missing in config file.");
-
-        // Moon to moon
-        if (loadSectionExists(j, "moon_to_moon"))
-        {
-            auto &sec = j["moon_to_moon"];
-            config_.moon_to_moon.base_latency_ms = getDoubleWithLog(sec, "base_latency_ms", 30.0);
-            config_.moon_to_moon.latency_jitter_ms = getDoubleWithLog(sec, "latency_jitter_ms", 10.0);
-            config_.moon_to_moon.latency_jitter_stddev = getDoubleWithLog(sec, "latency_jitter_stddev", 5.0);
-            config_.moon_to_moon.base_bit_error_rate = getDoubleWithLog(sec, "base_bit_error_rate", 2e-6);
-            config_.moon_to_moon.bit_error_rate_stddev = getDoubleWithLog(sec, "bit_error_rate_stddev", 1e-6);
-            config_.moon_to_moon.base_packet_loss_burst_freq_per_hour = getDoubleWithLog(sec, "base_packet_loss_burst_freq_per_hour", 0.2);
-            config_.moon_to_moon.packet_loss_burst_freq_stddev = getDoubleWithLog(sec, "packet_loss_burst_freq_stddev", 0.1);
-            config_.moon_to_moon.base_packet_loss_burst_duration_ms = getDoubleWithLog(sec, "base_packet_loss_burst_duration_ms", 50.0);
-            config_.moon_to_moon.base_packet_loss_burst_duration_stddev = getDoubleWithLog(sec, "base_packet_loss_burst_duration_stddev", 10.0);
-            config_.moon_to_moon.throughput_limit_mbps = getDoubleWithLog(sec, "throughput_limit_mbps", 7.5);
-        } else throw std::runtime_error("Moon to moon section missing in config file.");
+        loadSection(j, "earth_to_earth", config_.earth_to_earth, DEFAULT_EARTH_TO_EARTH);
+        loadSection(j, "earth_to_moon", config_.earth_to_moon, DEFAULT_EARTH_TO_MOON);
+        loadSection(j, "moon_to_earth", config_.moon_to_earth, DEFAULT_MOON_TO_EARTH);
+        loadSection(j, "moon_to_moon", config_.moon_to_moon, DEFAULT_MOON_TO_MOON);
     }
     catch (const std::exception &error)
     {
@@ -160,51 +91,69 @@ void ConfigManager::loadConfig()
 
 void ConfigManager::loadDefaultConfig()
 {
-    // Earth to earth
-    config_.earth_to_earth.base_latency_ms = 0;
-    config_.earth_to_earth.latency_jitter_ms = 0;
-    config_.earth_to_earth.latency_jitter_stddev = 0;
-    config_.earth_to_earth.base_bit_error_rate = 0;
-    config_.earth_to_earth.bit_error_rate_stddev = 0;
-    config_.earth_to_earth.base_packet_loss_burst_freq_per_hour = 0;
-    config_.earth_to_earth.packet_loss_burst_freq_stddev = 0;
-    config_.earth_to_earth.base_packet_loss_burst_duration_ms = 0;
-    config_.earth_to_earth.base_packet_loss_burst_duration_stddev = 0;
-    config_.earth_to_earth.throughput_limit_mbps = 0;
+    config_.earth_to_earth = DEFAULT_EARTH_TO_EARTH;
+    config_.earth_to_moon = DEFAULT_EARTH_TO_MOON;
+    config_.moon_to_earth = DEFAULT_MOON_TO_EARTH;
+    config_.moon_to_moon = DEFAULT_MOON_TO_MOON;
+}
 
-    // Earth to moon
-    config_.earth_to_moon.base_latency_ms = 1280.0;
-    config_.earth_to_moon.latency_jitter_ms = 100.0;
-    config_.earth_to_moon.latency_jitter_stddev = 50.0;
-    config_.earth_to_moon.base_bit_error_rate = 1e-5;
-    config_.earth_to_moon.bit_error_rate_stddev = 5e-6;
-    config_.earth_to_moon.base_packet_loss_burst_freq_per_hour = 1.0;
-    config_.earth_to_moon.packet_loss_burst_freq_stddev = 0.5;
-    config_.earth_to_moon.base_packet_loss_burst_duration_ms = 500.0;
-    config_.earth_to_moon.base_packet_loss_burst_duration_stddev = 100.0;
-    config_.earth_to_moon.throughput_limit_mbps = 0;
 
-    // Moon to earth
-    config_.moon_to_earth.base_latency_ms = 1280.0;
-    config_.moon_to_earth.latency_jitter_ms = 100.0;
-    config_.moon_to_earth.latency_jitter_stddev = 50.0;
-    config_.moon_to_earth.base_bit_error_rate = 1e-5;
-    config_.moon_to_earth.bit_error_rate_stddev = 5e-6;
-    config_.moon_to_earth.base_packet_loss_burst_freq_per_hour = 1.0;
-    config_.moon_to_earth.packet_loss_burst_freq_stddev = 0.5;
-    config_.moon_to_earth.base_packet_loss_burst_duration_ms = 500.0;
-    config_.moon_to_earth.base_packet_loss_burst_duration_stddev = 100.0;
-    config_.moon_to_earth.throughput_limit_mbps = 7.5;
+// ---- Helper function implementations ---- //
 
-    // Moon to moon
-    config_.moon_to_moon.base_latency_ms = 30.0;
-    config_.moon_to_moon.latency_jitter_ms = 10.0;
-    config_.moon_to_moon.latency_jitter_stddev = 5.0;
-    config_.moon_to_moon.base_bit_error_rate = 2e-6;
-    config_.moon_to_moon.bit_error_rate_stddev = 1e-6;
-    config_.moon_to_moon.base_packet_loss_burst_freq_per_hour = 0.2;
-    config_.moon_to_moon.packet_loss_burst_freq_stddev = 0.1;
-    config_.moon_to_moon.base_packet_loss_burst_duration_ms = 50.0;
-    config_.moon_to_moon.base_packet_loss_burst_duration_stddev = 10.0;
-    config_.moon_to_moon.throughput_limit_mbps = 7.5;
+
+namespace
+{
+
+    namespace nm = nlohmann;
+
+    // Helper function: if key is missing, log and return default.
+    double getDoubleWithLog(const nm::json &j, const std::string &key, const double defaultValue)
+    {
+        if (!j.contains(key))
+        {
+            std::cerr << "Key '" << key << "' not found, using default " << defaultValue << ".\n";
+            return defaultValue;
+        }
+        return j.value(key, defaultValue);
+    }
+
+    // Helper function: Load a section if available, else log an error.
+    bool loadSectionExists(const nm::json &j, const std::string &section)
+    {
+        if (!j.contains(section))
+        {
+            std::cerr << "Section '" << section << "' not found in configuration.\n";
+            return false;
+        }
+        return true;
+    }
+
+    // Helper function: Load link properties from a json section using default values
+    void loadLinkProperties(const nm::json &j, Config::LinkProperties &props, const Config::LinkProperties &defaults)
+    {
+        props.base_latency_ms = getDoubleWithLog(j, "base_latency_ms", defaults.base_latency_ms);
+        props.latency_jitter_ms = getDoubleWithLog(j, "latency_jitter_ms", defaults.latency_jitter_ms);
+        props.latency_jitter_stddev = getDoubleWithLog(j, "latency_jitter_stddev", defaults.latency_jitter_stddev);
+        props.base_bit_error_rate = getDoubleWithLog(j, "base_bit_error_rate", defaults.base_bit_error_rate);
+        props.bit_error_rate_stddev = getDoubleWithLog(j, "bit_error_rate_stddev", defaults.bit_error_rate_stddev);
+        props.base_packet_loss_burst_freq_per_hour = getDoubleWithLog(j, "base_packet_loss_burst_freq_per_hour", defaults.base_packet_loss_burst_freq_per_hour);
+        props.packet_loss_burst_freq_stddev = getDoubleWithLog(j, "packet_loss_burst_freq_stddev", defaults.packet_loss_burst_freq_stddev);
+        props.base_packet_loss_burst_duration_ms = getDoubleWithLog(j, "base_packet_loss_burst_duration_ms", defaults.base_packet_loss_burst_duration_ms);
+        props.base_packet_loss_burst_duration_stddev = getDoubleWithLog(j, "base_packet_loss_burst_duration_stddev", defaults.base_packet_loss_burst_duration_stddev);
+        props.throughput_limit_mbps = getDoubleWithLog(j, "throughput_limit_mbps", defaults.throughput_limit_mbps);
+    }
+
+    // Helper function: Load a configuration section
+    void loadSection(const nm::json &j, const std::string &sectionName, Config::LinkProperties &target, const Config::LinkProperties &defaults)
+    {
+        if (loadSectionExists(j, sectionName))
+        {
+            auto &sec = j[sectionName];
+            loadLinkProperties(sec, target, defaults);
+        }
+        else
+        {
+            throw std::runtime_error(sectionName + " section missing in config file.");
+        }
+    }
 }

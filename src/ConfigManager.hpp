@@ -24,7 +24,7 @@ struct Config
         double base_packet_loss_burst_duration_ms;
         double base_packet_loss_burst_duration_stddev;
 
-        // Throughput limit
+        // Throughput limit (note: 0 = no limit)
         double throughput_limit_mbps;
     };
 
