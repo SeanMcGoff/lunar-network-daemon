@@ -3,11 +3,12 @@
 #pragma once
 
 #include <string>
+#include <shared_mutex>
 
-struct Config {
-    
-    struct LinkProperties {
-
+struct Config
+{
+    struct LinkProperties
+    {
         // Latency params (ms)
         double base_latency_ms;
         double latency_jitter_ms;
@@ -31,5 +32,25 @@ struct Config {
     LinkProperties earth_to_moon;
     LinkProperties moon_to_earth;
     LinkProperties moon_to_moon;
+};
 
+
+class ConfigManager
+{
+public:
+    ConfigManager(const std::string &config_file);
+    Config getConfig();
+
+    // updates config_ with values from config file
+    void reloadConfig();
+
+private:
+    std::string config_file_;
+    Config config_;
+
+    // Shared mutex allows multiple readers but exclusive write access
+    mutable std::shared_mutex config_mutex_;
+
+    void loadConfig();
+    void loadDefaultConfig();
 };
