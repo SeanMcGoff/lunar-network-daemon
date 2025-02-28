@@ -1,0 +1,50 @@
+{
+  "earth_to_earth": {
+    "base_latency_ms": 0,
+    "latency_jitter_ms": 0,
+    "latency_jitter_stddev": 0,
+    "base_bit_error_rate": 0,
+    "bit_error_rate_stddev": 0,
+    "base_packet_loss_burst_freq_per_hour": 0,
+    "packet_loss_burst_freq_stddev": 0,
+    "base_packet_loss_burst_duration_ms": 0,
+    "base_packet_loss_burst_duration_stddev": 0,
+    "throughput_limit_mbps": 0
+  },
+  "earth_to_moon": {
+    "base_latency_ms": 1280.0,
+    "latency_jitter_ms": 100.0,
+    "latency_jitter_stddev": 50.0,
+    "base_bit_error_rate": 1e-5,
+    "bit_error_rate_stddev": 5e-6,
+    "base_packet_loss_burst_freq_per_hour": 1.0,
+    "packet_loss_burst_freq_stddev": 0.5,
+    "base_packet_loss_burst_duration_ms": 500.0,
+    "base_packet_loss_burst_duration_stddev": 100.0,
+    "throughput_limit_mbps": 0
+  },
+  "moon_to_earth": {
+    "base_latency_ms": 1280.0,
+    "latency_jitter_ms": 100.0,
+    "latency_jitter_stddev": 50.0,
+    "base_bit_error_rate": 1e-5,
+    "bit_error_rate_stddev": 5e-6,
+    "base_packet_loss_burst_freq_per_hour": 1.0,
+    "packet_loss_burst_freq_stddev": 0.5,
+    "base_packet_loss_burst_duration_ms": 500.0,
+    "base_packet_loss_burst_duration_stddev": 100.0,
+    "throughput_limit_mbps": 7.5
+  },
+  "moon_to_moon": {
+    "base_latency_ms": 30.0,
+    "latency_jitter_ms": 10.0,
+    "latency_jitter_stddev": 5.0,
+    "base_bit_error_rate": 2e-6,
+    "bit_error_rate_stddev": 1e-6,
+    "base_packet_loss_burst_freq_per_hour": 0.2,
+    "packet_loss_burst_freq_stddev": 0.1,
+    "base_packet_loss_burst_duration_ms": 50.0,
+    "base_packet_loss_burst_duration_stddev": 10.0,
+    "throughput_limit_mbps": 7.5
+  }
+}
