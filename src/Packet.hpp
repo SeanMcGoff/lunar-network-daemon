@@ -6,7 +6,6 @@
 #include <cstddef> // size_t
 #include <chrono>
 
-
 struct Packet
 {
     uint32_t id;   // netfilter queue's packet ID is a 32-bit unsigned integer
@@ -19,24 +18,34 @@ struct Packet
     std::chrono::steady_clock::time_point send_time;
 
     Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
-        std::chrono::steady_clock::time_point send_time);
+           std::chrono::steady_clock::time_point send_time);
+
+    // copy constructor and assignment
+    Packet(const Packet &other);
+    Packet &operator=(const Packet &other);
+
+    // move constructor and assignment
+    Packet(Packet &&other) noexcept;
+    Packet &operator=(Packet &&other) noexcept;
 
     ~Packet();
 };
 
-namespace PacketUtils {
+namespace PacketUtils
+{
 
-    enum class LinkType {
+    enum class LinkType
+    {
         EARTH_TO_EARTH,
         EARTH_TO_MOON,
         MOON_TO_EARTH,
         MOON_TO_MOON,
         OTHER
     };
-    
+
     bool isRoverIP(uint32_t ip);
     bool isBaseIP(uint32_t ip);
-    LinkType classifyPacket(const Packet& pkt);
-    bool extractIPs(const Packet& pkt, uint32_t& src_ip, uint32_t& dst_ip);
+    LinkType classifyPacket(const Packet &pkt);
+    bool extractIPs(const Packet &pkt, uint32_t &src_ip, uint32_t &dst_ip);
 
 } // namespace PacketUtils

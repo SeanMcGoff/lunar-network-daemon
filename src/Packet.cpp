@@ -4,7 +4,7 @@
 #include "configs.hpp"
 
 #include <cstring> // memcpy
-#include <netinet/in.h>
+#include <netinet/in.h> // ntohl
 
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point send_time)
@@ -13,6 +13,70 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
     // copy data to take ownership
     this->data = new uint8_t[length];
     std::memcpy(this->data, data, length);
+}
+
+Packet::Packet(const Packet &other)
+    : id(other.id), length(other.length), mark(other.mark), send_time(other.send_time), data(nullptr)
+{
+    if (other.data && other.length > 0)
+    {
+        this->data = new uint8_t[other.length];
+        std::memcpy(this->data, other.data, other.length);
+    }
+}
+
+Packet &Packet::operator=(const Packet &other)
+{
+    if (this != &other)
+    {
+        if (data)
+        {
+            delete[] data;
+            data = nullptr;
+        }
+
+        id = other.id;
+        length = other.length;
+        mark = other.mark;
+        send_time = other.send_time;
+
+        if (other.data && other.length > 0)
+        {
+            data = new uint8_t[other.length];
+            std::memcpy(data, other.data, other.length);
+        }
+    }
+
+    return *this;
+}
+
+Packet::Packet(Packet &&other) noexcept
+    : id(other.id), length(other.length), mark(other.mark), send_time(other.send_time), data(other.data)
+{
+    other.data = nullptr;
+    other.length = 0;
+}
+
+Packet &Packet::operator=(Packet &&other) noexcept
+{
+    if (this != &other)
+    {
+        if (data)
+        {
+            delete[] data;
+        }
+
+        id = other.id;
+        length = other.length;
+        mark = other.mark;
+        send_time = other.send_time;
+        data = other.data;
+
+        other.data = nullptr;
+        other.length = 0;
+    }
+
+    return *this;
 }
 
 Packet::~Packet()
@@ -36,7 +100,7 @@ namespace PacketUtils
         return (ip >= BASE_IP_MIN && ip <= BASE_IP_MAX);
     }
 
-    LinkType classifyPacket(const Packet& pkt)
+    LinkType classifyPacket(const Packet &pkt)
     {
         uint32_t src_ip, dst_ip;
 
@@ -61,7 +125,7 @@ namespace PacketUtils
             return LinkType::OTHER;
     }
 
-    bool extractIPs(const Packet& pkt, uint32_t& src_ip, uint32_t& dst_ip)
+    bool extractIPs(const Packet &pkt, uint32_t &src_ip, uint32_t &dst_ip)
     {
         // check if long enough to contain IP header
         // should always be longer than 20 but just in case
@@ -72,7 +136,7 @@ namespace PacketUtils
         if (ip_version != 4)
             return false;
 
-        // ntohl == network to host (big endian to host endianness)
+        // ntohl == network to host long (big endian to host endianness)
         src_ip = ntohl(*reinterpret_cast<const uint32_t *>(pkt.data + 12));
         dst_ip = ntohl(*reinterpret_cast<const uint32_t *>(pkt.data + 16));
 
