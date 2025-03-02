@@ -3,16 +3,18 @@
 #include "Packet.hpp"
 #include "configs.hpp"
 
-#include <cstring> // memcpy
+#include <cstring>      // memcpy
 #include <netinet/in.h> // ntohl
 
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point send_time)
-    : id(id), length(length), mark(mark), send_time(send_time)
+    : id(id), length(length), mark(mark), send_time(send_time), data(nullptr)
 {
     // copy data to take ownership
     this->data = new uint8_t[length];
     std::memcpy(this->data, data, length);
+
+    this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
 }
 
 Packet::Packet(const Packet &other)
@@ -88,58 +90,91 @@ Packet::~Packet()
     }
 }
 
-namespace PacketUtils
+// Getter method implementations
+uint32_t Packet::getId() const
 {
-    bool isRoverIP(uint32_t ip)
+    return id;
+}
+
+const uint8_t *Packet::getData() const
+{
+    return data;
+}
+
+size_t Packet::getLength() const
+{
+    return length;
+}
+
+uint32_t Packet::getMark() const
+{
+    return mark;
+}
+
+std::chrono::steady_clock::time_point Packet::getSendTime() const
+{
+    return send_time;
+}
+
+Packet::LinkType Packet::getLinkType() const
+{
+    return link_type;
+}
+
+// PacketClassifier implementation
+Packet::LinkType PacketClassifier::classifyPacket(const uint8_t *data, size_t length)
+{
+    uint32_t src_ip, dst_ip;
+
+    if (!extractIPs(data, length, src_ip, dst_ip))
     {
-        return (ip >= ROVER_IP_MIN && ip <= ROVER_IP_MAX);
+        return Packet::LinkType::OTHER;
     }
 
-    bool isBaseIP(uint32_t ip)
-    {
-        return (ip >= BASE_IP_MIN && ip <= BASE_IP_MAX);
-    }
+    bool is_src_rover = isRoverIP(src_ip);
+    bool is_src_base = isBaseIP(src_ip);
+    bool is_dst_rover = isRoverIP(dst_ip);
+    bool is_dst_base = isBaseIP(dst_ip);
 
-    LinkType classifyPacket(const Packet &pkt)
-    {
-        uint32_t src_ip, dst_ip;
+    if (is_src_rover && is_dst_rover)
+        return Packet::LinkType::MOON_TO_MOON;
+    else if (is_src_rover && is_dst_base)
+        return Packet::LinkType::MOON_TO_EARTH;
+    else if (is_src_base && is_dst_rover)
+        return Packet::LinkType::EARTH_TO_MOON;
+    else if (is_src_base && is_dst_base)
+        return Packet::LinkType::EARTH_TO_EARTH;
+    else
+        return Packet::LinkType::OTHER;
+}
 
-        if (!extractIPs(pkt, src_ip, dst_ip))
-        {
-            return LinkType::OTHER;
-        }
+bool PacketClassifier::isRoverIP(uint32_t ip)
+{
+    return (ip >= ROVER_IP_MIN && ip <= ROVER_IP_MAX);
+}
 
-        bool is_src_rover = isRoverIP(src_ip);
-        bool is_src_base = isBaseIP(src_ip);
-        bool is_dst_rover = isRoverIP(dst_ip);
-        bool is_dst_base = isBaseIP(dst_ip);
-        if (is_src_rover && is_dst_rover)
-            return LinkType::MOON_TO_MOON;
-        else if (is_src_rover && is_dst_base)
-            return LinkType::MOON_TO_EARTH;
-        else if (is_src_base && is_dst_rover)
-            return LinkType::EARTH_TO_MOON;
-        else if (is_src_base && is_dst_base)
-            return LinkType::EARTH_TO_EARTH;
-        else
-            return LinkType::OTHER;
-    }
+bool PacketClassifier::isBaseIP(uint32_t ip)
+{
+    return (ip >= BASE_IP_MIN && ip <= BASE_IP_MAX);
+}
 
-    bool extractIPs(const Packet &pkt, uint32_t &src_ip, uint32_t &dst_ip)
-    {
-        // check if long enough to contain IP header
-        // should always be longer than 20 but just in case
-        if (pkt.length < 20 || !pkt.data)
-            return false;
+bool PacketClassifier::extractIPs(const uint8_t *data, size_t length, uint32_t &src_ip, uint32_t &dst_ip)
+{
+    // check if long enough to contain IP header
+    // should always be longer than 20 but just in case
+    if (length < 20 || !data)
+        return false;
 
-        uint8_t ip_version = (pkt.data[0] >> 4) & 0xF; // first half byte
-        if (ip_version != 4)
-            return false;
+    uint8_t ip_version = (data[0] >> 4) & 0xF; // first half byte
+    if (ip_version != 4)
+        return false;
 
-        // ntohl == network to host long (big endian to host endianness)
-        src_ip = ntohl(*reinterpret_cast<const uint32_t *>(pkt.data + 12));
-        dst_ip = ntohl(*reinterpret_cast<const uint32_t *>(pkt.data + 16));
+    std::memcpy(&src_ip, data + 12, sizeof(uint32_t));
+    std::memcpy(&src_ip, data + 16, sizeof(uint32_t));
 
-        return true;
-    }
-} // namespace PacketUtils
+    // ntohl == network to host long (big endian to host endianness)
+    src_ip = ntohl(src_ip);
+    dst_ip = ntohl(dst_ip);
+
+    return true;
+}
