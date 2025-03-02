@@ -166,6 +166,8 @@ bool PacketClassifier::extractIPs(const uint8_t *data, size_t length, uint32_t &
         return false;
 
     uint8_t ip_version = (data[0] >> 4) & 0xF; // first half byte
+
+    // if ipv6 then it's not part of our project
     if (ip_version != 4)
         return false;
 
