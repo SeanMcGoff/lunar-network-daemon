@@ -170,7 +170,7 @@ bool PacketClassifier::extractIPs(const uint8_t *data, size_t length, uint32_t &
         return false;
 
     std::memcpy(&src_ip, data + 12, sizeof(uint32_t));
-    std::memcpy(&src_ip, data + 16, sizeof(uint32_t));
+    std::memcpy(&dst_ip, data + 16, sizeof(uint32_t));
 
     // ntohl == network to host long (big endian to host endianness)
     src_ip = ntohl(src_ip);
