@@ -173,6 +173,7 @@ Packet &Packet::operator=(Packet &&other) noexcept
 
         other.data = nullptr;
         other.length = 0;
+        other.owns_data = false;
     }
 
     return *this;
@@ -187,7 +188,7 @@ Packet::~Packet()
     }
 }
 
-bool Packet::prepareForModification()
+void Packet::prepareForModification()
 {
     if (!owns_data && data && length > 0)
     {

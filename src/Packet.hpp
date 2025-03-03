@@ -99,7 +99,7 @@ public:
 
     ~Packet();
 
-    bool prepareForModification();
+    void prepareForModification();
 
     // Getter methods
     uint32_t getId() const;
