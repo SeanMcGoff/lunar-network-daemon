@@ -9,7 +9,7 @@
 // constructor that takes ownership by copying
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received)
-    : id(id), length(length), mark(mark), time_received(time_received), data(nullptr)
+    : id(id), length(length), mark(mark), time_received(time_received), data(nullptr), owns_data(true)
 {
     // copy data to take ownership
     this->data = new uint8_t[length];
