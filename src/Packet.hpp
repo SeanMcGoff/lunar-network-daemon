@@ -21,8 +21,19 @@ public:
         OTHER
     };
 
+    enum class Action {
+        ACCEPT,
+        DROP,
+        MODIFY
+    };
+
+    // constructor that takes ownership
     Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
            std::chrono::steady_clock::time_point time_received);
+
+    // constructor that references external data
+    Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
+        std::chrono::steady_clock::time_point time_received, bool copy_data);
 
     // copy constructor and assignment
     Packet(const Packet &other);
@@ -34,11 +45,17 @@ public:
 
     ~Packet();
 
+
+    // modification methods
+    bool prepareForModification();
+
     // Getter methods
     uint32_t getId() const;
     const uint8_t *getData() const;
+    uint8_t *getMutableData();
     size_t getLength() const;
     uint32_t getMark() const;
+    void setMark(uint32_t new_mark);
     std::chrono::steady_clock::time_point getSendTime() const;
     LinkType getLinkType() const;
 
@@ -46,6 +63,9 @@ private:
     uint32_t id;   // netfilter queue's packet ID is a 32-bit unsigned integer
     uint8_t *data; // netfilter API works with raw packet data as array of bytes
     size_t length;
+
+    // whether we own the memory and should delete[] in the destructor
+    bool owns_data;
 
     LinkType link_type;
 

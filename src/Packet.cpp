@@ -6,6 +6,7 @@
 #include <cstring>      // memcpy
 #include <netinet/in.h> // ntohl
 
+// constructor that takes ownership by copying
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received)
     : id(id), length(length), mark(mark), time_received(time_received), data(nullptr)
@@ -17,13 +18,41 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
     this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
 }
 
+// constructor that optionally references external data
+Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
+               std::chrono::steady_clock::time_point time_received, bool copy_data)
+    : id(id), length(length), mark(mark), time_received(time_received), data(nullptr), owns_data(copy_data)
+{
+    if (copy_data)
+    {
+        // Copy data to take ownership
+        this->data = new uint8_t[length];
+        std::memcpy(this->data, data, length);
+    }
+    else
+    {
+        // Just reference the external data
+        this->data = const_cast<uint8_t *>(data);
+    }
+
+    this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
+}
+
 Packet::Packet(const Packet &other)
-    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received), data(nullptr)
+    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received),
+      data(nullptr), owns_data(other.owns_data), link_type(other.link_type)
 {
     if (other.data && other.length > 0)
     {
-        this->data = new uint8_t[other.length];
-        std::memcpy(this->data, other.data, other.length);
+        if (owns_data)
+        {
+            this->data = new uint8_t[other.length];
+            std::memcpy(this->data, other.data, other.length);
+        }
+        else
+        {
+            this->data = other.data; // Just reference the same data
+        }
     }
 }
 
@@ -31,7 +60,7 @@ Packet &Packet::operator=(const Packet &other)
 {
     if (this != &other)
     {
-        if (data)
+        if (owns_data && data)
         {
             delete[] data;
             data = nullptr;
@@ -41,11 +70,20 @@ Packet &Packet::operator=(const Packet &other)
         length = other.length;
         mark = other.mark;
         time_received = other.time_received;
+        link_type = other.link_type;
+        owns_data = other.owns_data;
 
         if (other.data && other.length > 0)
         {
-            data = new uint8_t[other.length];
-            std::memcpy(data, other.data, other.length);
+            if (owns_data)
+            {
+                data = new uint8_t[other.length];
+                std::memcpy(data, other.data, other.length);
+            }
+            else
+            {
+                data = other.data; // Just reference the same data
+            }
         }
     }
 
@@ -53,7 +91,8 @@ Packet &Packet::operator=(const Packet &other)
 }
 
 Packet::Packet(Packet &&other) noexcept
-    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received), data(other.data)
+    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received),
+      data(other.data), owns_data(other.owns_data), link_type(other.link_type)
 {
     other.data = nullptr;
     other.length = 0;
@@ -63,7 +102,7 @@ Packet &Packet::operator=(Packet &&other) noexcept
 {
     if (this != &other)
     {
-        if (data)
+        if (owns_data && data)
         {
             delete[] data;
         }
@@ -72,7 +111,9 @@ Packet &Packet::operator=(Packet &&other) noexcept
         length = other.length;
         mark = other.mark;
         time_received = other.time_received;
+        link_type = other.link_type;
         data = other.data;
+        owns_data = other.owns_data;
 
         other.data = nullptr;
         other.length = 0;
@@ -83,12 +124,27 @@ Packet &Packet::operator=(Packet &&other) noexcept
 
 Packet::~Packet()
 {
-    if (data)
+    if (owns_data && data)
     {
         delete[] data;
         data = nullptr;
     }
 }
+
+
+bool Packet::prepareForModification()
+{
+    if (!owns_data && data) {
+        // Make a copy if we don't own the data
+        uint8_t* new_data = new uint8_t[length];
+        std::memcpy(new_data, data, length);
+        data = new_data;
+        owns_data = true;
+        return true;
+    }
+    return owns_data;
+}
+
 
 // Getter method implementations
 uint32_t Packet::getId() const
@@ -101,6 +157,15 @@ const uint8_t *Packet::getData() const
     return data;
 }
 
+uint8_t *Packet::getMutableData()
+{
+    // Make sure we own the data before returning a non-const pointer
+    if (prepareForModification()) {
+        return data;
+    }
+    return nullptr;
+}
+
 size_t Packet::getLength() const
 {
     return length;
@@ -109,6 +174,11 @@ size_t Packet::getLength() const
 uint32_t Packet::getMark() const
 {
     return mark;
+}
+
+void Packet::setMark(uint32_t new_mark)
+{
+    mark = new_mark;
 }
 
 std::chrono::steady_clock::time_point Packet::getSendTime() const
