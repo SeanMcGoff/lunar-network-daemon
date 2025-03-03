@@ -1,7 +1,7 @@
 // ConfigManager.cpp
 
 #include "ConfigManager.hpp"
-#include "DefaultConfig.hpp"
+#include "configs.hpp"
 #include <nlohmann/json.hpp>
 #include <mutex>
 #include <fstream>
