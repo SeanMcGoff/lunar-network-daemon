@@ -11,11 +11,31 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received)
     : id(id), length(length), mark(mark), time_received(time_received), data(nullptr), owns_data(true)
 {
-    // copy data to take ownership
-    this->data = new uint8_t[length];
-    std::memcpy(this->data, data, length);
+    if (data && length > 0)
+    {
+        // Copy data to take ownership with allocation check
+        this->data = new (std::nothrow) uint8_t[length];
+        if (this->data)
+        {
+            std::memcpy(this->data, data, length);
+        }
+        else
+        {
+            // Handle allocation failure
+            this->length = 0;
+            this->owns_data = false;
+        }
+    }
 
-    this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
+    // Only classify if we have valid data
+    if (this->data && this->length > 0)
+    {
+        this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
+    }
+    else
+    {
+        this->link_type = LinkType::OTHER;
+    }
 }
 
 // constructor that optionally references external data
@@ -23,21 +43,42 @@ Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received, bool copy_data)
     : id(id), length(length), mark(mark), time_received(time_received), data(nullptr), owns_data(copy_data)
 {
-    if (copy_data)
+    if (data && length > 0)
     {
-        // Copy data to take ownership
-        this->data = new uint8_t[length];
-        std::memcpy(this->data, data, length);
+        if (copy_data)
+        {
+            // Copy data to take ownership with allocation check
+            this->data = new (std::nothrow) uint8_t[length];
+            if (this->data)
+            {
+                std::memcpy(this->data, data, length);
+            }
+            else
+            {
+                // Handle allocation failure
+                this->length = 0;
+                this->owns_data = false;
+            }
+        }
+        else
+        {
+            // Just reference the external data
+            this->data = const_cast<uint8_t *>(data);
+        }
+    }
+
+    // Only classify if we have valid data
+    if (this->data && this->length > 0)
+    {
+        this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
     }
     else
     {
-        // Just reference the external data
-        this->data = const_cast<uint8_t *>(data);
+        this->link_type = LinkType::OTHER;
     }
-
-    this->link_type = PacketClassifier::classifyPacket(this->data, this->length);
 }
 
+// copy constructor
 Packet::Packet(const Packet &other)
     : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received),
       data(nullptr), owns_data(other.owns_data), link_type(other.link_type)
@@ -46,8 +87,18 @@ Packet::Packet(const Packet &other)
     {
         if (owns_data)
         {
-            this->data = new uint8_t[other.length];
-            std::memcpy(this->data, other.data, other.length);
+            this->data = new (std::nothrow) uint8_t[other.length];
+            if (this->data)
+            {
+                std::memcpy(this->data, other.data, other.length);
+            }
+            else
+            {
+                // Handle allocation failure
+                this->length = 0;
+                this->owns_data = false;
+                this->link_type = LinkType::OTHER;
+            }
         }
         else
         {
@@ -56,6 +107,7 @@ Packet::Packet(const Packet &other)
     }
 }
 
+// copy assignment operator
 Packet &Packet::operator=(const Packet &other)
 {
     if (this != &other)
@@ -77,8 +129,18 @@ Packet &Packet::operator=(const Packet &other)
         {
             if (owns_data)
             {
-                data = new uint8_t[other.length];
-                std::memcpy(data, other.data, other.length);
+                data = new (std::nothrow) uint8_t[other.length];
+                if (!data)
+                {
+                    // Handle allocation failure
+                    length = 0;
+                    owns_data = false;
+                    link_type = LinkType::OTHER;
+                }
+                else
+                {
+                    std::memcpy(data, other.data, other.length);
+                }
             }
             else
             {
@@ -131,12 +193,16 @@ Packet::~Packet()
     }
 }
 
-
 bool Packet::prepareForModification()
 {
-    if (!owns_data && data) {
+    if (!owns_data && data && length > 0)
+    {
         // Make a copy if we don't own the data
-        uint8_t* new_data = new uint8_t[length];
+        uint8_t *new_data = new (std::nothrow) uint8_t[length];
+        if (!new_data)
+        {
+            return false; // Allocation failed, can't modify
+        }
         std::memcpy(new_data, data, length);
         data = new_data;
         owns_data = true;
@@ -144,7 +210,6 @@ bool Packet::prepareForModification()
     }
     return owns_data;
 }
-
 
 // Getter method implementations
 uint32_t Packet::getId() const
@@ -160,7 +225,8 @@ const uint8_t *Packet::getData() const
 uint8_t *Packet::getMutableData()
 {
     // Make sure we own the data before returning a non-const pointer
-    if (prepareForModification()) {
+    if (prepareForModification())
+    {
         return data;
     }
     return nullptr;
