@@ -15,11 +15,13 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
     if (data && length > 0)
     {
         // Copy data to take ownership with exception handling
-        try {
+        try
+        {
             this->data = new uint8_t[length];
             std::memcpy(this->data, data, length);
         }
-        catch (const std::bad_alloc&) {
+        catch (const std::bad_alloc &)
+        {
             // Propagate the exception (caller needs to handle it)
             throw;
         }
@@ -46,11 +48,13 @@ Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
         if (copy_data)
         {
             // Copy data to take ownership with exception handling
-            try {
+            try
+            {
                 this->data = new uint8_t[length];
                 std::memcpy(this->data, data, length);
             }
-            catch (const std::bad_alloc&) {
+            catch (const std::bad_alloc &)
+            {
                 // Propagate the exception, caller needs to handle it
                 throw;
             }
@@ -82,11 +86,13 @@ Packet::Packet(const Packet &other)
     {
         if (owns_data)
         {
-            try {
+            try
+            {
                 this->data = new uint8_t[other.length];
                 std::memcpy(this->data, other.data, other.length);
             }
-            catch (const std::bad_alloc&) {
+            catch (const std::bad_alloc &)
+            {
                 // Propagate the exception - caller must handle it
                 throw;
             }
@@ -103,46 +109,46 @@ Packet &Packet::operator=(const Packet &other)
 {
     if (this != &other)
     {
-        // Save old state in case we need to restore
-        uint8_t* old_data = data;
-        bool old_owns = owns_data;
-        
-        // Set new scalar values
+        // Create temporary copy of data first before modifying state
+        uint8_t *new_data = nullptr;
+
+        // Only allocate and copy if other has data and we should own it
+        if (other.data && other.length > 0 && other.owns_data)
+        {
+            try
+            {
+                new_data = new uint8_t[other.length];
+                std::memcpy(new_data, other.data, other.length);
+            }
+            catch (const std::bad_alloc &)
+            {
+                // Nothing modified yet so propagate exception
+                throw;
+            }
+        }
+
+        // Now safe to free existing data and modify our state
+        if (owns_data && data)
+        {
+            delete[] data;
+        }
+
+        // Update scalar members
         id = other.id;
         length = other.length;
         mark = other.mark;
         time_received = other.time_received;
         link_type = other.link_type;
         owns_data = other.owns_data;
-        
-        // Handle data pointer
-        data = nullptr; // Reset first (safer)
 
-        if (other.data && other.length > 0)
+        // Assign the data pointer
+        if (other.owns_data)
         {
-            if (owns_data)
-            {
-                try {
-                    data = new uint8_t[other.length];
-                    std::memcpy(data, other.data, other.length);
-                }
-                catch (const std::bad_alloc&) {
-                    // Restore the old state
-                    data = old_data;
-                    owns_data = old_owns;
-                    throw; // Now safe to re-throw
-                }
-            }
-            else
-            {
-                data = other.data; // Just reference the same data
-            }
+            data = new_data;
         }
-        
-        // Now safe to delete the old data
-        if (old_owns && old_data)
+        else
         {
-            delete[] old_data;
+            data = other.data; // Just reference the same data
         }
     }
 
@@ -199,14 +205,16 @@ bool Packet::prepareForModification()
     if (!owns_data && data && length > 0)
     {
         // Make a copy if we don't own the data
-        try {
+        try
+        {
             uint8_t *new_data = new uint8_t[length];
             std::memcpy(new_data, data, length);
             data = new_data;
             owns_data = true;
             return true;
         }
-        catch (const std::bad_alloc&) {
+        catch (const std::bad_alloc &)
+        {
             // Caller needs to handle exception
             throw;
         }
@@ -228,7 +236,8 @@ const uint8_t *Packet::getData() const
 uint8_t *Packet::getMutableData()
 {
     // Make sure we own the data before returning a non-const pointer
-    if (!owns_data && data && length > 0) {
+    if (!owns_data && data && length > 0)
+    {
         prepareForModification();
     }
     return data;
