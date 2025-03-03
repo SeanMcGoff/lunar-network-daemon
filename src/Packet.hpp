@@ -1,5 +1,56 @@
 // Packet.hpp
 
+// ---- Packet Usage ---- //
+
+// Packet is a class that lays the foundation for efficient handling of packet data
+// while staying compatible with the netfilter C API and raw pointers.
+
+// It allows the user to access members like LinkType and netfilter mark which are useful
+// for processing downstream.
+
+// It provides utilities for constructing, modifying, copying, and classifying packets
+
+// There are two constructors, one that always copies data
+// Example:
+// Packet pkt(id, data_ptr, data_length, mark, std::chrono::steady_clock::now());
+
+// And a second that optionally references data without copying
+// This is more efficient but the user should ensure the data will outlive the packet instance
+// Example (true to copy, false to not copy):
+// Packet pkt(id, data_ptr, data_length, mark, std::chrono::steady_clock::now(), false);
+
+// The packet automatically classifies traffic based on IP addresses in the constructor.
+// Example:
+// Packet::LinkType link = pkt.getLinkType(); // returns EARTH_TO_MOON, MOON_TO_MOON, etc.
+
+// For read-only access to packet data, use getData()
+// Example:
+// const uint8_t *data = pkt.getData();
+// size_t length = pkt.getLength;
+
+// For modifying packet data, use getMutableData() which ensures data is copied if needed
+// Example:
+// uint8_t *mutable_data = pkt.getMutableData();
+// if (mutable_data) {
+//      mutable_data[10] = 0x42; // you can modify some byte
+// }
+
+// Or you can prepare for modification explicitly
+// Example:
+// if (pkt.prepareForModification())
+//      do_something;
+
+// Get or set netfilter mark
+// Example:
+// uint32_t mark = pkt.getMark();
+// pkt.setMark(new_mark);
+
+// The class tracks data ownership when moving or copying
+// Packet pkt2 = pkt; // maks a deep copy only if pkt owns its data
+// Packet pkt3 = std::move(pkt); // transfers ownership efficiently
+
+// When a packet is destroyed, it will free memory only if it owns the data
+
 #pragma once
 
 #include <cstdint> // uint32_t
@@ -45,8 +96,6 @@ public:
 
     ~Packet();
 
-
-    // modification methods
     bool prepareForModification();
 
     // Getter methods
