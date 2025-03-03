@@ -103,18 +103,20 @@ Packet &Packet::operator=(const Packet &other)
 {
     if (this != &other)
     {
-        if (owns_data && data)
-        {
-            delete[] data;
-            data = nullptr;
-        }
-
+        // Save old state in case we need to restore
+        uint8_t* old_data = data;
+        bool old_owns = owns_data;
+        
+        // Set new scalar values
         id = other.id;
         length = other.length;
         mark = other.mark;
         time_received = other.time_received;
         link_type = other.link_type;
         owns_data = other.owns_data;
+        
+        // Handle data pointer
+        data = nullptr; // Reset first (safer)
 
         if (other.data && other.length > 0)
         {
@@ -125,18 +127,22 @@ Packet &Packet::operator=(const Packet &other)
                     std::memcpy(data, other.data, other.length);
                 }
                 catch (const std::bad_alloc&) {
-                    // Make sure we're in a valid state before re-throwing
-                    data = nullptr;
-                    length = 0;
-                    owns_data = false;
-                    link_type = LinkType::OTHER;
-                    throw; // caller needs to handle re-thow
+                    // Restore the old state
+                    data = old_data;
+                    owns_data = old_owns;
+                    throw; // Now safe to re-throw
                 }
             }
             else
             {
                 data = other.data; // Just reference the same data
             }
+        }
+        
+        // Now safe to delete the old data
+        if (old_owns && old_data)
+        {
+            delete[] old_data;
         }
     }
 
@@ -188,7 +194,7 @@ Packet::~Packet()
     }
 }
 
-void Packet::prepareForModification()
+bool Packet::prepareForModification()
 {
     if (!owns_data && data && length > 0)
     {
@@ -198,12 +204,14 @@ void Packet::prepareForModification()
             std::memcpy(new_data, data, length);
             data = new_data;
             owns_data = true;
+            return true;
         }
         catch (const std::bad_alloc&) {
             // Caller needs to handle exception
             throw;
         }
     }
+    return owns_data && data != nullptr;
 }
 
 // Getter method implementations

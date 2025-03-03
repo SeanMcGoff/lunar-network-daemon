@@ -50,6 +50,8 @@
 // pkt.setMark(new_mark);
 
 // The class tracks data ownership when moving or copying
+// The copy constructor will only modify the data in pkt2 if the copy is successful
+// Example:
 // Packet pkt2 = pkt; // maks a deep copy only if pkt owns its data
 // NB: caller must handle std::bad_alloc exception
 
@@ -64,7 +66,7 @@
 
 #include <cstdint> // uint32_t
 #include <cstddef> // size_t
-#include <chrono> // std::chrono::stead_clock
+#include <chrono>  // std::chrono::stead_clock
 
 // Forward declaration
 class PacketClassifier;
@@ -87,7 +89,7 @@ public:
 
     // constructor that references external data
     Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
-        std::chrono::steady_clock::time_point time_received, bool copy_data);
+           std::chrono::steady_clock::time_point time_received, bool copy_data);
 
     // copy constructor and assignment
     Packet(const Packet &other);
@@ -99,7 +101,7 @@ public:
 
     ~Packet();
 
-    void prepareForModification();
+    bool prepareForModification();
 
     // Getter methods
     uint32_t getId() const;
@@ -133,10 +135,10 @@ private:
 class PacketClassifier
 {
 public:
-    static Packet::LinkType classifyPacket(const uint8_t* data, size_t length);
-    
+    static Packet::LinkType classifyPacket(const uint8_t *data, size_t length);
+
 private:
     static bool isRoverIP(uint32_t ip);
     static bool isBaseIP(uint32_t ip);
-    static bool extractIPs(const uint8_t* data, size_t length, uint32_t &src_ip, uint32_t &dst_ip);
+    static bool extractIPs(const uint8_t *data, size_t length, uint32_t &src_ip, uint32_t &dst_ip);
 };
