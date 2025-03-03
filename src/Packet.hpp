@@ -1,9 +1,5 @@
 // Packet.hpp
 
-// ---- Packet Usage ---- //
-
-
-
 #pragma once
 
 #include <cstdint> // uint32_t
@@ -26,7 +22,7 @@ public:
     };
 
     Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
-           std::chrono::steady_clock::time_point send_time);
+           std::chrono::steady_clock::time_point time_received);
 
     // copy constructor and assignment
     Packet(const Packet &other);
@@ -56,7 +52,7 @@ private:
     // netfilter mark to classify the packet link type
     uint32_t mark;
 
-    std::chrono::steady_clock::time_point send_time;
+    std::chrono::steady_clock::time_point time_received;
 
     friend class PacketClassifier; // allow classifier to access private data
 };

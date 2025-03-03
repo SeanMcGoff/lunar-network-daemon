@@ -7,8 +7,8 @@
 #include <netinet/in.h> // ntohl
 
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
-               std::chrono::steady_clock::time_point send_time)
-    : id(id), length(length), mark(mark), send_time(send_time), data(nullptr)
+               std::chrono::steady_clock::time_point time_received)
+    : id(id), length(length), mark(mark), time_received(time_received), data(nullptr)
 {
     // copy data to take ownership
     this->data = new uint8_t[length];
@@ -18,7 +18,7 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
 }
 
 Packet::Packet(const Packet &other)
-    : id(other.id), length(other.length), mark(other.mark), send_time(other.send_time), data(nullptr)
+    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received), data(nullptr)
 {
     if (other.data && other.length > 0)
     {
@@ -40,7 +40,7 @@ Packet &Packet::operator=(const Packet &other)
         id = other.id;
         length = other.length;
         mark = other.mark;
-        send_time = other.send_time;
+        time_received = other.time_received;
 
         if (other.data && other.length > 0)
         {
@@ -53,7 +53,7 @@ Packet &Packet::operator=(const Packet &other)
 }
 
 Packet::Packet(Packet &&other) noexcept
-    : id(other.id), length(other.length), mark(other.mark), send_time(other.send_time), data(other.data)
+    : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received), data(other.data)
 {
     other.data = nullptr;
     other.length = 0;
@@ -71,7 +71,7 @@ Packet &Packet::operator=(Packet &&other) noexcept
         id = other.id;
         length = other.length;
         mark = other.mark;
-        send_time = other.send_time;
+        time_received = other.time_received;
         data = other.data;
 
         other.data = nullptr;
@@ -113,7 +113,7 @@ uint32_t Packet::getMark() const
 
 std::chrono::steady_clock::time_point Packet::getSendTime() const
 {
-    return send_time;
+    return time_received;
 }
 
 Packet::LinkType Packet::getLinkType() const
