@@ -13,11 +13,13 @@
 // There are two constructors, one that always copies data
 // Example:
 // Packet pkt(id, data_ptr, data_length, mark, std::chrono::steady_clock::now());
+// NB: caller must handle std::bad_alloc exception
 
 // And a second that optionally references data without copying
 // This is more efficient but the user should ensure the data will outlive the packet instance
 // Example (true to copy, false to not copy):
 // Packet pkt(id, data_ptr, data_length, mark, std::chrono::steady_clock::now(), false);
+// NB: caller must handle std::bad_alloc exception
 
 // The packet automatically classifies traffic based on IP addresses in the constructor.
 // Example:
@@ -34,11 +36,13 @@
 // if (mutable_data) {
 //      mutable_data[10] = 0x42; // you can modify some byte
 // }
+// NB: caller must handle std::bad_alloc exception
 
 // Or you can prepare for modification explicitly
 // Example:
 // if (pkt.prepareForModification())
 //      do_something;
+// NB: caller must handle std::bad_alloc exception
 
 // Get or set netfilter mark
 // Example:
@@ -47,6 +51,11 @@
 
 // The class tracks data ownership when moving or copying
 // Packet pkt2 = pkt; // maks a deep copy only if pkt owns its data
+// NB: caller must handle std::bad_alloc exception
+
+// Ownership can be transferred easily using std::move
+// This leaves the original packet in a valid but empty state
+// Example:
 // Packet pkt3 = std::move(pkt); // transfers ownership efficiently
 
 // When a packet is destroyed, it will free memory only if it owns the data
@@ -55,7 +64,7 @@
 
 #include <cstdint> // uint32_t
 #include <cstddef> // size_t
-#include <chrono>
+#include <chrono> // std::chrono::stead_clock
 
 // Forward declaration
 class PacketClassifier;

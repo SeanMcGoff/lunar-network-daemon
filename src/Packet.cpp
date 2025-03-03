@@ -5,6 +5,7 @@
 
 #include <cstring>      // memcpy
 #include <netinet/in.h> // ntohl
+#include <stdexcept>
 
 // constructor that takes ownership by copying
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
@@ -13,17 +14,14 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
 {
     if (data && length > 0)
     {
-        // Copy data to take ownership with allocation check
-        this->data = new (std::nothrow) uint8_t[length];
-        if (this->data)
-        {
+        // Copy data to take ownership with exception handling
+        try {
+            this->data = new uint8_t[length];
             std::memcpy(this->data, data, length);
         }
-        else
-        {
-            // Handle allocation failure
-            this->length = 0;
-            this->owns_data = false;
+        catch (const std::bad_alloc&) {
+            // Propagate the exception (caller needs to handle it)
+            throw;
         }
     }
 
@@ -47,17 +45,14 @@ Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
     {
         if (copy_data)
         {
-            // Copy data to take ownership with allocation check
-            this->data = new (std::nothrow) uint8_t[length];
-            if (this->data)
-            {
+            // Copy data to take ownership with exception handling
+            try {
+                this->data = new uint8_t[length];
                 std::memcpy(this->data, data, length);
             }
-            else
-            {
-                // Handle allocation failure
-                this->length = 0;
-                this->owns_data = false;
+            catch (const std::bad_alloc&) {
+                // Propagate the exception, caller needs to handle it
+                throw;
             }
         }
         else
@@ -87,17 +82,13 @@ Packet::Packet(const Packet &other)
     {
         if (owns_data)
         {
-            this->data = new (std::nothrow) uint8_t[other.length];
-            if (this->data)
-            {
+            try {
+                this->data = new uint8_t[other.length];
                 std::memcpy(this->data, other.data, other.length);
             }
-            else
-            {
-                // Handle allocation failure
-                this->length = 0;
-                this->owns_data = false;
-                this->link_type = LinkType::OTHER;
+            catch (const std::bad_alloc&) {
+                // Propagate the exception - caller must handle it
+                throw;
             }
         }
         else
@@ -129,17 +120,17 @@ Packet &Packet::operator=(const Packet &other)
         {
             if (owns_data)
             {
-                data = new (std::nothrow) uint8_t[other.length];
-                if (!data)
-                {
-                    // Handle allocation failure
+                try {
+                    data = new uint8_t[other.length];
+                    std::memcpy(data, other.data, other.length);
+                }
+                catch (const std::bad_alloc&) {
+                    // Make sure we're in a valid state before re-throwing
+                    data = nullptr;
                     length = 0;
                     owns_data = false;
                     link_type = LinkType::OTHER;
-                }
-                else
-                {
-                    std::memcpy(data, other.data, other.length);
+                    throw; // caller needs to handle re-thow
                 }
             }
             else
@@ -152,6 +143,7 @@ Packet &Packet::operator=(const Packet &other)
     return *this;
 }
 
+// move constructor
 Packet::Packet(Packet &&other) noexcept
     : id(other.id), length(other.length), mark(other.mark), time_received(other.time_received),
       data(other.data), owns_data(other.owns_data), link_type(other.link_type)
@@ -161,6 +153,7 @@ Packet::Packet(Packet &&other) noexcept
     other.owns_data = false;
 }
 
+// move assignment operator
 Packet &Packet::operator=(Packet &&other) noexcept
 {
     if (this != &other)
@@ -199,17 +192,17 @@ bool Packet::prepareForModification()
     if (!owns_data && data && length > 0)
     {
         // Make a copy if we don't own the data
-        uint8_t *new_data = new (std::nothrow) uint8_t[length];
-        if (!new_data)
-        {
-            return false; // Allocation failed, can't modify
+        try {
+            uint8_t *new_data = new uint8_t[length];
+            std::memcpy(new_data, data, length);
+            data = new_data;
+            owns_data = true;
         }
-        std::memcpy(new_data, data, length);
-        data = new_data;
-        owns_data = true;
-        return true;
+        catch (const std::bad_alloc&) {
+            // Caller needs to handle exception
+            throw;
+        }
     }
-    return owns_data;
 }
 
 // Getter method implementations
@@ -226,11 +219,10 @@ const uint8_t *Packet::getData() const
 uint8_t *Packet::getMutableData()
 {
     // Make sure we own the data before returning a non-const pointer
-    if (prepareForModification())
-    {
-        return data;
+    if (!owns_data && data && length > 0) {
+        prepareForModification();
     }
-    return nullptr;
+    return data;
 }
 
 size_t Packet::getLength() const
