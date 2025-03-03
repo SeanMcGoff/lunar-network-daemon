@@ -72,12 +72,6 @@ public:
         OTHER
     };
 
-    enum class Action {
-        ACCEPT,
-        DROP,
-        MODIFY
-    };
-
     // constructor that takes ownership
     Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
            std::chrono::steady_clock::time_point time_received);
@@ -105,7 +99,7 @@ public:
     size_t getLength() const;
     uint32_t getMark() const;
     void setMark(uint32_t new_mark);
-    std::chrono::steady_clock::time_point getSendTime() const;
+    std::chrono::steady_clock::time_point getTimeReceived() const;
     LinkType getLinkType() const;
 
 private:

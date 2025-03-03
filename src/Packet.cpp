@@ -158,6 +158,7 @@ Packet::Packet(Packet &&other) noexcept
 {
     other.data = nullptr;
     other.length = 0;
+    other.owns_data = false;
 }
 
 Packet &Packet::operator=(Packet &&other) noexcept
@@ -247,7 +248,7 @@ void Packet::setMark(uint32_t new_mark)
     mark = new_mark;
 }
 
-std::chrono::steady_clock::time_point Packet::getSendTime() const
+std::chrono::steady_clock::time_point Packet::getTimeReceived() const
 {
     return time_received;
 }
