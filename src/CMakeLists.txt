@@ -2,15 +2,16 @@
 
 include(FetchContent)
 
-FetchContent_Declare(json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP true
-)
-
+# Enable fetching content from internet
+include(FetchContent)
+# Include json lib If it is available locally then use that instead
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY "https://github.com/nlohmann/json"
+  GIT_TAG "v3.11.3"
+  FIND_PACKAGE_ARGS NAMES json nlohmann_json)
 FetchContent_MakeAvailable(json)
 
-add_executable(lunar-network-daemon
-    ConfigManager.cpp
-)
+add_executable(lunar-network-daemon ConfigManager.cpp)
 
 target_link_libraries(lunar-network-daemon PRIVATE nlohmann_json::nlohmann_json)
