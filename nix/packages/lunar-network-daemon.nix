@@ -1,4 +1,5 @@
 {
+  pname,
   flake, # maps to inputs.self
   pkgs, # a nixpkgs instance
   debug ? false,
@@ -8,7 +9,7 @@ let
   inherit (pkgs) lib;
 in
 pkgs.stdenv.mkDerivation {
-  name = "all";
+  name = pname;
   src = flake;
   nativeBuildInputs = with pkgs; [
     cmake
