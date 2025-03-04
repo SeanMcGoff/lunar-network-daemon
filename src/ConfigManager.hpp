@@ -23,59 +23,56 @@
 
 #pragma once
 
-#include <string>
 #include <shared_mutex>
+#include <string>
 
-struct Config
-{
-    struct LinkProperties
-    {
-        // Latency params (ms)
-        double base_latency_ms;
-        double latency_jitter_ms;
-        double latency_jitter_stddev;
+struct Config {
+  struct LinkProperties {
+    // Latency params (ms)
+    double base_latency_ms;
+    double latency_jitter_ms;
+    double latency_jitter_stddev;
 
-        // Bit error rate params
-        double base_bit_error_rate;
-        double bit_error_rate_stddev;
+    // Bit error rate params
+    double base_bit_error_rate;
+    double bit_error_rate_stddev;
 
-        // Packet loss burst params
-        double base_packet_loss_burst_freq_per_hour;
-        double packet_loss_burst_freq_stddev;
-        double base_packet_loss_burst_duration_ms;
-        double base_packet_loss_burst_duration_stddev;
+    // Packet loss burst params
+    double base_packet_loss_burst_freq_per_hour;
+    double packet_loss_burst_freq_stddev;
+    double base_packet_loss_burst_duration_ms;
+    double base_packet_loss_burst_duration_stddev;
 
-        // Throughput limit (note: 0 = no limit)
-        double throughput_limit_mbps;
-    };
+    // Throughput limit (note: 0 = no limit)
+    double throughput_limit_mbps;
+  };
 
-    LinkProperties earth_to_earth;
-    LinkProperties earth_to_moon;
-    LinkProperties moon_to_earth;
-    LinkProperties moon_to_moon;
+  LinkProperties earth_to_earth;
+  LinkProperties earth_to_moon;
+  LinkProperties moon_to_earth;
+  LinkProperties moon_to_moon;
 };
 
-class ConfigManager
-{
+class ConfigManager {
 public:
-    ConfigManager(const std::string &config_file);
+  ConfigManager(const std::string &config_file);
 
-    Config getConfig();
-    Config::LinkProperties getEToEConfig();
-    Config::LinkProperties getEToMConfig();
-    Config::LinkProperties getMToEConfig();
-    Config::LinkProperties getMToMConfig();
+  Config getConfig();
+  Config::LinkProperties getEToEConfig();
+  Config::LinkProperties getEToMConfig();
+  Config::LinkProperties getMToEConfig();
+  Config::LinkProperties getMToMConfig();
 
-    // updates config_ with values from config file
-    void reloadConfig();
+  // updates config_ with values from config file
+  void reloadConfig();
 
 private:
-    std::string config_file_;
-    Config config_;
+  std::string config_file_;
+  Config config_;
 
-    // Shared mutex allows multiple readers but exclusive write access
-    mutable std::shared_mutex config_mutex_;
+  // Shared mutex allows multiple readers but exclusive write access
+  mutable std::shared_mutex config_mutex_;
 
-    void loadConfig();
-    void loadDefaultConfig();
+  void loadConfig();
+  void loadDefaultConfig();
 };
