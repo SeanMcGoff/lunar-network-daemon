@@ -14,25 +14,25 @@ inputs.treefmt-nix.lib.mkWrapper pkgs {
     shellcheck.enable = true;
     shfmt.enable = true;
     # Cmake
-    cmake-format = {
-      enable = true;
-      includes = [
-        # Get cmake lists at all levels
-        "CMakeLists.txt"
-        "**/CMakeLists.txt"
-      ];
-    };
+    # cmake-format = {
+    #   enable = true;
+    #   includes = [
+    #     # Get cmake lists at all levels
+    #     "CMakeLists.txt"
+    #     "**/CMakeLists.txt"
+    #   ];
+    # };
     # C, C++
-    clang-format.enable = true;
+    # clang-format.enable = true;
     # Various
-    prettier = {
-      enable = true;
-      includes = [
-        ".clang-*"
-        "*.yml"
-        "*.md"
-      ];
-    };
+    # prettier = {
+    #   enable = true;
+    #   includes = [
+    #     ".clang-*"
+    #     "*.yml"
+    #     "*.md"
+    #   ];
+    # };
   };
   settings.global.excludes = [
     "build"
