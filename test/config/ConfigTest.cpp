@@ -12,7 +12,7 @@ bool LinkPropertiesEqual(const Config::LinkProperties& lp1, const Config::LinkPr
     return std::memcmp(&lp1, &lp2, sizeof(Config::LinkProperties)) == 0;
 }
 
-TEST(LoadDefaultConfig, ConfigTests) {
+TEST(ConfigTests, LoadDefaultConfig) {
   // Don't supply config file
   ConfigManager test_config_manager("");
   // Check if config is the same as default config

@@ -9,4 +9,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
+# Add test subdirectories
 add_subdirectory(config)
+add_subdirectory(packet)
