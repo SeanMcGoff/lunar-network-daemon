@@ -15,8 +15,8 @@ std::vector<uint8_t> make_test_packet(const uint32_t source_ip,
   std::vector<uint8_t> packet(test_packet, test_packet + sizeof(test_packet));
 
   // Swap endianness
-  auto src = ntohl(source_ip);
-  auto dst = ntohl(dest_ip);
+  auto src = htonl(source_ip);
+  auto dst = htonl(dest_ip);
 
   // Copy the source and destination IPs into the packet
   packet.insert(packet.end(), reinterpret_cast<uint8_t *>(&src),
