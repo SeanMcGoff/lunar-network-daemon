@@ -1,17 +1,13 @@
 # src/CMakeLists.txt
 
-include(FetchContent)
+# Add library subdirectories
+add_subdirectory(config)
+add_subdirectory(packet)
 
-# Enable fetching content from internet
-include(FetchContent)
-# Include json lib If it is available locally then use that instead
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY "https://github.com/nlohmann/json"
-  GIT_TAG "v3.11.3"
-  FIND_PACKAGE_ARGS NAMES json nlohmann_json)
-FetchContent_MakeAvailable(json)
+# Add the main executable
+add_executable(lunar-network-daemon main.cpp)
 
-add_executable(lunar-network-daemon ConfigManager.cpp)
-
-target_link_libraries(lunar-network-daemon PRIVATE nlohmann_json::nlohmann_json)
+# Link static libraries to the executable
+target_link_libraries(lunar-network-daemon PRIVATE
+  config
+  packet)
