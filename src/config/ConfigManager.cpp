@@ -6,8 +6,6 @@
 #include <mutex>
 #include <fstream>
 #include <iostream>
-#include <mutex>
-#include <nlohmann/json.hpp>
 
 // Anonymous namespace (to avoid cluttering global namespace)
 namespace {
