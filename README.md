@@ -58,3 +58,37 @@ and release is
 ```sh
 nix build .#lunar-network-daemon
 ```
+
+### Running
+
+- **Dockerfile:**
+
+  - Uses a multi-stage build (builder & runtime) to keep the final image small and efficient.
+  - Builds the C++ networking daemon using Nix flakes.
+  - Copies only the necessary binaries and configuration into the runtime stage.
+  - Includes a health check to monitor the daemon process and port status.
+
+- **nginx.conf:**
+
+  - Configures Nginx as a reverse proxy to forward requests to the Lunar Network Daemon.
+  - Uses an upstream block for potential load balancing across multiple daemon instances.
+
+- **docker-compose.yml:**
+  - Defines the `lunar-network-daemon` service, built from the `Dockerfile`, with 4 replicas for load balancing.
+  - Defines the `nginx` service to proxy requests to the daemon.
+  - Uses a health check to ensure the daemon is running before Nginx starts.
+  - Establishes an internal `backend` network for secure communication between services.
+
+### Next steps
+
+Just run
+
+```sh
+./setup.sh
+```
+
+or manually run the following commands:
+
+```sh
+docker-compose up --build -d
+```
