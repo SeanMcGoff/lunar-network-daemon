@@ -1,4 +1,4 @@
-enable_testing()
+# test/config/CMakeLists.txt
 
 add_executable(
     config_test

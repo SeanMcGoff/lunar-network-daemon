@@ -36,5 +36,8 @@ message(STATUS "Building with type '${CMAKE_BUILD_TYPE}'.")
 # Export compile commands for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Allows CTest to find tests in test/ subdir
+enable_testing()
+
 add_subdirectory(src)
 add_subdirectory(test)
