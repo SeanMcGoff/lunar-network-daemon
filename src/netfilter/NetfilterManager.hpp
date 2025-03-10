@@ -22,6 +22,8 @@ public:
 
   ~NetfilterManager();
 
+  bool initialise();
+
 private:
   // configuration
   std::string interface_name_;
@@ -71,7 +73,7 @@ private:
 
   struct nfq_handle *nfq_h_;
   struct nfq_q_handle *nfq_qh_;
-  int nfq_fd;
+  int nfq_fd_;
 
   // static callback for netfilter
   static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
