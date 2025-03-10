@@ -1,4 +1,32 @@
-// src/netfilter/NetfilterManager.cpp
+// src/netfilter/NetfilterManager.hpp
 #pragma once
 
-#include "Packet.hpp"
+#include <atomic> // std::atomic<bool>
+#include <chrono>
+#include <functional> // std::function
+#include <string>
+
+class NetfilterManager {
+public:
+  // type definition for packet handling callback.
+  // when a NetfilterManager instance is created, the user will provide a
+  // callback function that matches this signature
+  using PacketHandlerFunc = std::function<void(
+      uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
+      std::chrono::steady_clock::time_point time_received)>;
+
+  NetfilterManager(const std::string &interface_name, PacketHandlerFunc handler,
+                   int queue_num = 0);
+
+  ~NetfilterManager();
+
+private:
+  // configuration
+  std::string interface_name_;
+  PacketHandlerFunc handler_;
+  int queue_num_;
+
+  // state
+  bool initialised_;
+  std::atomic<bool> running_;
+};
