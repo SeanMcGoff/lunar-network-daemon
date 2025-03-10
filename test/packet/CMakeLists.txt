@@ -1,4 +1,4 @@
-enable_testing()
+# test/packet/CMakeLists.txt
 
 add_executable(
     packet_test
