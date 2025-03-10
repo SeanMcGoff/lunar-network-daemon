@@ -24,6 +24,19 @@ public:
 
   bool initialise();
 
+  // starts processing packets from the netfilter queue
+  // when a packet is received, it is passed to the handler function
+  // the handler is resonsible for setting the verdict and
+  //    choosing the packet's destiny :)
+  // If blocking is true, it will enter a loop that continuously
+  //    processes packets until it is stopped from another thread
+  // If false, it processes only the packets immediately available
+  //    and returns
+  // Returns false only when an error has ocurred
+  // Buffer overflows are handled internally but will log a warning
+  //    (but it won't return false unless a catastophic error)
+  bool processPackets(bool blocking);
+
 private:
   // configuration
   std::string interface_name_;

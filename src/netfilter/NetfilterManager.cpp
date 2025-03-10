@@ -1,9 +1,13 @@
 // src/netfilter/NetfilterManager.cpp
 #include "NetfilterManager.hpp"
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
 #include <cstring> // strerror
 #include <iostream>
 
 #include <fcntl.h> // F_GETFL, F_SETFL, O_NONBLOCK
+#include <libnetfilter_queue/libnetfilter_queue.h>
+#include <sys/socket.h>
 
 NetfilterManager::NetfilterManager(const std::string &interface_name,
                                    PacketHandlerFunc handler, int queue_num)
@@ -98,5 +102,72 @@ bool NetfilterManager::initialise() {
     nfq_fd_ = -1;
     initialised_ = false;
     return false;
+  }
+}
+
+bool NetfilterManager::processPackets(bool blocking) {
+  if (!initialised_) {
+    std::cerr << "Error in processPacket: NetfilterManager not initialised.\n";
+    return false;
+  }
+
+  running_ = true;
+
+  char buffer[4096];
+
+  std::cout << "Starting to process packets from netfilter queue " << queue_num_
+            << ".\n";
+
+  while (running_) {
+    // recive data from netfilter queue
+    int received =
+        recv(nfq_fd_, buffer, sizeof(buffer), blocking ? 0 : MSG_DONTWAIT);
+
+    if (received < 0) {
+      // Handle various error conitions
+      if (errno == EWOULDBLOCK || errno == EAGAIN) {
+        // No data available in non-blocking mode, it just means no packets were
+        // ready
+        if (blocking)
+          return true;
+
+        // in blocking mode this shouldn't happen (unless fd was set as
+        // non-blocking somewhere else), but if it does, just try again.
+        continue;
+      } else if (errno == ENOBUFS) {
+        // Queue is full, packets are being dropped by the kernel
+        // can happen during traffic spikes
+        std::cerr << "ENOBUFS from netfilter queue, packets are being dropped "
+                     "by the kernel\n";
+        continue;
+      } else if (errno == EINTR) {
+        // interrupted by signal (could be shutdown request)
+        if (!running_)
+          break;
+
+        // if not interrupted by a signal to stop processing, just continue
+        continue;
+      } else {
+        // unexpected error condition, log and exit the loop
+        std::cerr << "Error receiving from netfilter queue. " << queue_num_
+                  << ": " << strerror(errno) << "\n";
+        running_ = false;
+        return false;
+      }
+    }
+
+    if (received >= 0) {
+      // a single recv() call can return multiple packets
+      // nfq_handle_packet will parse the buffer and call our callback for each
+      // packet found in the buffer
+      nfq_handle_packet(nfq_h_, buffer, received);
+
+      // if in non-blocking mode, return after processing one iteration
+      if (!blocking)
+        break;
+    }
+
+    std::cout << "Processed packets from netfilter queue.\n";
+    return true;
   }
 }
