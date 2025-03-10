@@ -9,6 +9,9 @@ add_subdirectory(netfilter)
 add_executable(lunar-network-daemon main.cpp)
 
 # Link static libraries to the executable
-target_link_libraries(lunar-network-daemon PRIVATE
-  config
-  packet)
+target_link_libraries(lunar-network-daemon
+    PRIVATE
+        packet
+        config
+        netfilter
+)
