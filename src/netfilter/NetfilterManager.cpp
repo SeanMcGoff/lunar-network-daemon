@@ -1,13 +1,13 @@
 // src/netfilter/NetfilterManager.cpp
 #include "NetfilterManager.hpp"
-#include <asm-generic/errno-base.h>
-#include <asm-generic/errno.h>
-#include <cstring> // strerror
+#include <asm-generic/errno-base.h> // errno
+#include <asm-generic/errno.h>      // errno
+#include <cstring>                  // strerror
 #include <iostream>
 
 #include <fcntl.h> // F_GETFL, F_SETFL, O_NONBLOCK
 #include <libnetfilter_queue/libnetfilter_queue.h>
-#include <sys/socket.h>
+#include <sys/socket.h> // recv
 
 NetfilterManager::NetfilterManager(const std::string &interface_name,
                                    PacketHandlerFunc handler, int queue_num)
@@ -113,7 +113,9 @@ bool NetfilterManager::processPackets(bool blocking) {
 
   running_ = true;
 
-  char buffer[4096];
+  // 64KB big enough for multiple packets in a single recv() call
+  // balance between memory usage and performance
+  char buffer[65536];
 
   std::cout << "Starting to process packets from netfilter queue " << queue_num_
             << ".\n";
