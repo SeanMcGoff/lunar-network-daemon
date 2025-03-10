@@ -170,6 +170,6 @@ bool NetfilterManager::processPackets(bool blocking) {
     }
 
     std::cout << "Processed packets from netfilter queue.\n";
-    return true;
   }
+  return true;
 }
