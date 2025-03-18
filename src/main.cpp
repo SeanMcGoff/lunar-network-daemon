@@ -1,5 +1,6 @@
 #include <asm-generic/socket.h>
 #include <chrono>
+#include <exception>
 #include <iostream>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnetfilter_queue/linux_nfnetlink_queue.h>
@@ -12,6 +13,8 @@
 
 #define NF_ACCEPT 1
 #define NF_DROP 0
+
+static bool running = true;
 
 void setupIPTables();
 void teardownIPTables();
@@ -76,8 +79,51 @@ int main() {
     }
 
     std::cout << "Starting main loop.\n";
-  } catch (...) {
+    while (running) {
+      if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
+        nfq_handle_packet(h, (char *)buf, rv);
+      }
+
+      if (errno == ENOBUFS) {
+        std::cerr << "Warning: Buffer overflow, losing packets!\n";
+        continue;
+      }
+
+      if (errno != EINTR) {
+        throw std::runtime_error("recv() failed.");
+      }
+    }
+
+    std::cout << "Exiting main loop.\n";
+
+  } catch (std::exception &error) {
+    std::cerr << "Error: " << error.what() << "\n";
   }
+
+  // clean up
+  if (qh) {
+    std::cout << "Destroying queue.\n";
+    nfq_destroy_queue(qh);
+  }
+
+  if (h) {
+    std::cout << "Closing netfilter handle.\n";
+    nfq_close(h);
+  }
+
+  // tear down iptables rules
+  if (iptables_set) {
+    try {
+      teardownIPTables();
+    } catch (std::exception &error) {
+      std::cerr << "Error tearing down iptables rules: " << error.what()
+                << "\n";
+      throw;
+    }
+  }
+
+  std::cout << "Shutdown complete.\n";
+  return 0;
 }
 
 // Function to set up iptables rules
