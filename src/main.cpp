@@ -1,5 +1,7 @@
 #include <asm-generic/socket.h>
 #include <chrono>
+#include <csignal>
+#include <cstring>
 #include <exception>
 #include <iostream>
 #include <libnetfilter_queue/libnetfilter_queue.h>
@@ -8,7 +10,6 @@
 #include <stdexcept>
 #include <sys/socket.h>
 
-#include "ConfigManager.hpp"
 #include "Packet.hpp"
 
 #define NF_ACCEPT 1
@@ -19,10 +20,22 @@ static bool running = true;
 void setupIPTables();
 void teardownIPTables();
 
+void signalHandler(int signal) {
+  std::cout << "Received signal " << signal << ", shutting down.\n";
+  running = false;
+}
+
 static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
                           struct nfq_data *nfa, void *data);
 
 int main() {
+  // set up signal handling for graceful shutdown
+  struct sigaction sa{};
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = signalHandler;
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
+
   std::cout << "Starting packet interception on wg0.\n";
 
   struct nfq_handle *h = nullptr;
@@ -185,7 +198,7 @@ void teardownIPTables() {
 
 static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
                           struct nfq_data *nfa, void *data) {
-  struct nfqnl_msg_packet_hdr *ph;
+  struct nfqnl_msg_packet_hdr *ph = nullptr;
   uint32_t id = 0;
   uint32_t mark = 0;
   int ret = 0;
