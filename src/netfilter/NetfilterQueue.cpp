@@ -1,7 +1,10 @@
 #include "NetfilterQueue.hpp"
 #include "configs.hpp"
+#include <cerrno>
 #include <csignal>
 #include <iostream>
+#include <libnetfilter_queue/libnetfilter_queue.h>
+#include <stdexcept>
 
 volatile sig_atomic_t running = true;
 
@@ -45,7 +48,8 @@ NetfilterQueue::NetfilterQueue()
   queue_handle_.reset(qh);
 
   // Set copy packet mode
-  if (nfq_set_mode(queue_handle_.get(), NFQNL_COPY_PACKET, 0xFFFF) < 0) {
+  if (nfq_set_mode(queue_handle_.get(), NFQNL_COPY_PACKET, MAX_PACKET_SIZE) <
+      0) {
     throw std::runtime_error("Failed to set netfilter queue copy mode");
   }
 
@@ -57,4 +61,37 @@ NetfilterQueue::NetfilterQueue()
   if (setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
     std::cerr << "Warning: Could not increase socket buffer size" << std::endl;
   }
+}
+
+void NetfilterQueue::run() {
+  std::cout << "Starting main packet processing loop.\n";
+
+  char buffer[MAX_PACKET_SIZE] __attribute__((aligned));
+
+  while (running) {
+    ssize_t received = recv(fd_, buffer, sizeof(buffer), 0);
+
+    if (received >= 0) {
+      nfq_handle_packet(handle_.get(), buffer, static_cast<int>(received));
+      continue;
+    }
+
+    if (errno == ENOBUFS) {
+      std::cerr << "Warning: Buffer overflows, packets are being dropped!\n";
+      continue;
+    }
+
+    if (errno == EINTR) {
+      // interrupted by signal, check if we should continue
+      if (!running) {
+        break;
+      }
+      continue;
+    }
+
+    // any other error
+    throw std::runtime_error("recv() failed");
+  }
+
+  std::cout << "Exiting main packet processing loop.\n";
 }
