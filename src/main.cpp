@@ -1,3 +1,5 @@
+// main.cpp
+
 #include <asm-generic/socket.h>
 #include <chrono>
 #include <csignal>
@@ -51,10 +53,11 @@ int main() {
   }
 
   try {
-    int fd, rv;
+    int fd = 0;
+    ssize_t rv = 0;
 
     // 64KB
-    uint8_t buf[65536] __attribute__((aligned));
+    char buf[65536] __attribute__((aligned));
 
     std::cout << "Openign Netfilter queue.\n";
 
@@ -93,8 +96,8 @@ int main() {
 
     std::cout << "Starting main loop.\n";
     while (running) {
-      if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-        nfq_handle_packet(h, (char *)buf, rv);
+      if ((rv = recv(fd, (char *)buf, sizeof(buf), 0)) >= 0) {
+        nfq_handle_packet(h, (char *)buf, static_cast<int>(rv));
       }
 
       if (errno == ENOBUFS) {
@@ -237,7 +240,7 @@ static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
       std::cout << "MOON_TO_EARTH\n";
       break;
     case Packet::LinkType::MOON_TO_MOON:
-      std::cout << "MOON_TO_MOON";
+      std::cout << "MOON_TO_MOON\n";
       break;
     default:
       std::cout << "OTHER\n";
