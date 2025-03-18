@@ -17,8 +17,6 @@
 #include "Packet.hpp"
 #include "configs.hpp"
 
-static bool running = true;
-
 void setupIPTables();
 void teardownIPTables();
 
