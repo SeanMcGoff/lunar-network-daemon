@@ -1,11 +1,13 @@
 // main.cpp
 
-#include <asm-generic/socket.h>
 #include <chrono>
 #include <csignal>
 #include <cstring>
 #include <exception>
 #include <iostream>
+
+// netfilter includes
+#include <asm-generic/socket.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnetfilter_queue/linux_nfnetlink_queue.h>
 #include <netinet/in.h>
@@ -13,9 +15,7 @@
 #include <sys/socket.h>
 
 #include "Packet.hpp"
-
-#define NF_ACCEPT 1
-#define NF_DROP 0
+#include "configs.hpp"
 
 static bool running = true;
 
