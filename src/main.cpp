@@ -1,9 +1,11 @@
+#include <asm-generic/socket.h>
 #include <chrono>
 #include <iostream>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnetfilter_queue/linux_nfnetlink_queue.h>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <sys/socket.h>
 
 #include "ConfigManager.hpp"
 #include "Packet.hpp"
@@ -18,10 +20,64 @@ static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
                           struct nfq_data *nfa, void *data);
 
 int main() {
-  // Just testing everything links properly
-  ConfigManager manager("config/config.json");
-  std::cout << manager.getConfig().earth_to_moon.base_bit_error_rate
-            << std::endl;
+  std::cout << "Starting packet interception on wg0.\n";
+
+  struct nfq_handle *h = nullptr;
+  struct nfq_q_handle *qh = nullptr;
+  bool iptables_set = false;
+
+  try {
+    setupIPTables();
+    iptables_set = true;
+  } catch (const std::exception &error) {
+    std::cerr << "Failed to set up iptables rules: " << error.what() << "\n";
+    throw;
+  }
+
+  try {
+    int fd, rv;
+
+    // 64KB
+    uint8_t buf[65536] __attribute__((aligned));
+
+    std::cout << "Openign Netfilter queue.\n";
+
+    h = nfq_open();
+    if (!h) {
+      throw std::runtime_error("Failed to open nfqueue");
+    }
+
+    if (nfq_unbind_pf(h, AF_INET) < 0) {
+      throw std::runtime_error("Failed to unbind ipv4");
+    }
+
+    if (nfq_bind_pf(h, AF_INET) < 0) {
+      throw std::runtime_error("Failed to bind ipb4");
+    }
+
+    std::cout << "Creating queue and setting callback.\n";
+
+    qh = nfq_create_queue(h, 0, &packetCallback, nullptr);
+    if (!qh) {
+      throw std::runtime_error("Failed to create netfilter queue.");
+    }
+
+    if (nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xFFFF) < 0) {
+      throw std::runtime_error("Failed to set NFQ copy-packet mode.");
+    }
+
+    // file descriptor for netlink socket
+    fd = nfq_fd(h);
+
+    // increase socket buffer size to avoid packet loss
+    int opt = 1024 * 1024; // 1MB buffer
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+      std::cerr << "Warning: could not increase socket buffer size.\n";
+    }
+
+    std::cout << "Starting main loop.\n";
+  } catch (...) {
+  }
 }
 
 // Function to set up iptables rules
