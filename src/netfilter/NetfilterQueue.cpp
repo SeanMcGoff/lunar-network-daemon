@@ -95,3 +95,9 @@ void NetfilterQueue::run() {
 
   std::cout << "Exiting main packet processing loop.\n";
 }
+
+int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
+                                         struct nfgenmsg *nfmsg,
+                                         struct nfq_data *nfa, void *data) {
+  return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
+}
