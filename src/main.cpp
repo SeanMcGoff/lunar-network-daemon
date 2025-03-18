@@ -1,11 +1,21 @@
+#include <chrono>
 #include <iostream>
+#include <libnetfilter_queue/libnetfilter_queue.h>
+#include <libnetfilter_queue/linux_nfnetlink_queue.h>
+#include <netinet/in.h>
 #include <stdexcept>
 
 #include "ConfigManager.hpp"
 #include "Packet.hpp"
 
+#define NF_ACCEPT 1
+#define NF_DROP 0
+
 void setupIPTables();
 void teardownIPTables();
+
+static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
+                          struct nfq_data *nfa, void *data);
 
 int main() {
   // Just testing everything links properly
@@ -69,4 +79,57 @@ void teardownIPTables() {
 
   if (successful)
     std::cout << "Successfully removed iptables rules.\n";
+}
+
+static int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
+                          struct nfq_data *nfa, void *data) {
+  struct nfqnl_msg_packet_hdr *ph;
+  uint32_t id = 0;
+  uint32_t mark = 0;
+  int ret = 0;
+  uint8_t *packet_data = nullptr;
+
+  ph = nfq_get_msg_packet_hdr(nfa);
+  if (ph) {
+    id = ntohl(ph->packet_id);
+  } else {
+    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+  }
+
+  mark = nfq_get_nfmark(nfa);
+
+  ret = nfq_get_payload(nfa, &packet_data);
+  if (ret < 0) {
+    std::cerr << "Error: Could not get packet payload.\n";
+    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+  }
+
+  try {
+    auto now = std::chrono::steady_clock::now();
+
+    Packet packet(id, packet_data, ret, mark, now, false);
+
+    // Print data classfication
+    std::cout << "Packet classification: ";
+    switch (packet.getLinkType()) {
+    case Packet::LinkType::EARTH_TO_EARTH:
+      std::cout << "EARTH_TO_EARTH\n";
+      break;
+    case Packet::LinkType::EARTH_TO_MOON:
+      std::cout << "EARTH_TO_MOON\n";
+      break;
+    case Packet::LinkType::MOON_TO_EARTH:
+      std::cout << "MOON_TO_EARTH\n";
+      break;
+    case Packet::LinkType::MOON_TO_MOON:
+      std::cout << "MOON_TO_MOON";
+      break;
+    default:
+      std::cout << "OTHER\n";
+    }
+  } catch (const std::exception &error) {
+    std::cerr << "Error processing packet: " << error.what() << "\n";
+  }
+
+  return nfq_set_verdict(qh, id, NF_ACCEPT, ret, nullptr);
 }
