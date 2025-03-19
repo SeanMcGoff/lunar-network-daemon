@@ -65,6 +65,7 @@ void initializeLogger() {
 
 void signalHandler(int signal) {
   std::cout << "Received signal " << signal << ", shutting down.\n";
+  spdlog::info("Received signal {}, shutting down.", signal);
   if (g_queue) {
     g_queue->stop();
   }
