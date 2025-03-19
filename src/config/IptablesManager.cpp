@@ -15,7 +15,12 @@ IptablesManager::~IptablesManager() {
 void IptablesManager::setupRules() {
   std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
 
-  // Forward incoming wireguard traffic to nfqueue
+  // Forward wireguard traffic to nfqueue
+  // -A FORWARD: Append a rule to the FORWARD chain (ie. packets being routed
+  // through this host) -i wg0: Match packets whose incoming (-i meaning
+  // incoming) interface is wg0 -j NFQUEUE: "Jump" to the NFQUEUE target (ie.
+  // hand off to NFQUEUE instead of dropping or accepting)
+  // --queue-num 0: Put packets into queue number 0.
   executeCommand("iptables -A FORWARD -i " + WG_INTERFACE +
                  " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
 
