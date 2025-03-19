@@ -27,7 +27,33 @@ std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
 
 IptablesManager::~IptablesManager() {
   try {
-    teardownRules();
+  std::cout << "Tearing down iptables rules..." << "\n";
+
+  bool success = true;
+
+  // Remove incoming rule
+  try {
+    executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
+                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+  } catch (const std::exception &error) {
+    std::cerr << "Warning: Failed to remove incoming iptables rules: "
+              << error.what() << "\n";
+    success = false;
+  }
+
+  // Remove outgoing rule
+  try {
+    executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
+                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+  } catch (const std::exception &error) {
+    std::cerr << "Warning: Failed to remove outgoing iptables rules: "
+              << error.what() << "\n";
+    success = false;
+  }
+
+  if (success) {
+    std::cout << "Successfully removed iptables rules.\n";
+  }
   } catch (const std::exception &error) {
     std::cerr << "Error tearing down iptables rules: " << error.what() << "\n";
   }
