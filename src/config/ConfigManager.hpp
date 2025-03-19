@@ -1,4 +1,4 @@
-// ConfigManager.hpp
+// src/config/ConfigManager.hpp
 
 // ---- ConfigManager Usage ---- //
 
@@ -46,7 +46,7 @@ struct Config {
     // Throughput limit (note: 0 = no limit)
     double throughput_limit_mbps;
 
-    auto operator<=>(const LinkProperties&) const = default;
+    auto operator<=>(const LinkProperties &) const = default;
   };
 
   LinkProperties earth_to_earth;

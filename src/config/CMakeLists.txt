@@ -15,7 +15,9 @@ FetchContent_MakeAvailable(json)
 add_library(config STATIC
     ConfigManager.cpp
     ConfigManager.hpp
-    configs.hpp)
+    configs.hpp
+    IptablesManager.hpp
+    IptablesManager.cpp)
 
 target_include_directories(config PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
