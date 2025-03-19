@@ -3,7 +3,7 @@
 #include <iostream>
 
 IptablesManager::IptablesManager() {
-std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
+  std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
 
   // Forward wireguard traffic to nfqueue
   // -A FORWARD: Append a rule to the FORWARD chain (ie. packets being routed
@@ -23,42 +23,42 @@ std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
     executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
                    " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
     throw;
-    }
+  }
+}
 
 IptablesManager::~IptablesManager() {
   try {
-  std::cout << "Tearing down iptables rules..." << "\n";
+    std::cout << "Tearing down iptables rules..." << "\n";
 
-  bool success = true;
+    bool success = true;
 
-  // Remove incoming rule
-  try {
-    executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
-                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
-  } catch (const std::exception &error) {
-    std::cerr << "Warning: Failed to remove incoming iptables rules: "
-              << error.what() << "\n";
-    success = false;
-  }
+    // Remove incoming rule
+    try {
+      executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
+                     " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+    } catch (const std::exception &error) {
+      std::cerr << "Warning: Failed to remove incoming iptables rules: "
+                << error.what() << "\n";
+      success = false;
+    }
 
-  // Remove outgoing rule
-  try {
-    executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
-                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
-  } catch (const std::exception &error) {
-    std::cerr << "Warning: Failed to remove outgoing iptables rules: "
-              << error.what() << "\n";
-    success = false;
-  }
+    // Remove outgoing rule
+    try {
+      executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
+                     " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+    } catch (const std::exception &error) {
+      std::cerr << "Warning: Failed to remove outgoing iptables rules: "
+                << error.what() << "\n";
+      success = false;
+    }
 
-  if (success) {
-    std::cout << "Successfully removed iptables rules.\n";
-  }
+    if (success) {
+      std::cout << "Successfully removed iptables rules.\n";
+    }
   } catch (const std::exception &error) {
     std::cerr << "Error tearing down iptables rules: " << error.what() << "\n";
   }
 }
-
 
 void IptablesManager::executeCommand(const std::string &command) {
   int result = system(command.c_str());
