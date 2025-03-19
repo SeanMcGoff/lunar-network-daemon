@@ -1,21 +1,22 @@
 // src/netfilter/NetfilterQueue.cpp
 
-#include "NetfilterQueue.hpp"
-#include "configs.hpp"
 #include <cerrno>
 #include <chrono>
 #include <csignal>
 #include <exception>
 #include <iostream>
+#include <stdexcept>
+
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnfnetlink/linux_nfnetlink.h>
 #include <netinet/in.h>
-#include <stdexcept>
 
+#include "NetfilterQueue.hpp"
 #include "Packet.hpp"
+#include "configs.hpp"
 
 NetfilterQueue::NetfilterQueue()
-    : handle_(nullptr, nfq_close),
+    : running_(true), handle_(nullptr, nfq_close),
       queue_handle_(nullptr, [](struct nfq_q_handle *qh) {
         if (qh) {
           std::cout << "Destroying queue..." << std::endl;
@@ -41,7 +42,7 @@ NetfilterQueue::NetfilterQueue()
     throw std::runtime_error("Failed to bind IPv4 to netfilter queue");
   }
 
-  std::cout << "Creating queue and setting callback..." << std::endl;
+  std::cout << "Creating queue and setting callback..." << "\n";
 
   // Create the queue with the callback function
   struct nfq_q_handle *qh = nfq_create_queue(
@@ -74,14 +75,17 @@ void NetfilterQueue::run() {
 
   char buffer[MAX_PACKET_SIZE] __attribute__((aligned));
 
-  while (running) {
-    ssize_t received = recv(fd_, buffer, sizeof(buffer), 0);
+  while (running_) {
+    // receive data from the netfilter queue
+    ssize_t received = recv(fd_, (char *)buffer, sizeof(buffer), 0);
 
     if (received >= 0) {
-      nfq_handle_packet(handle_.get(), buffer, static_cast<int>(received));
+      nfq_handle_packet(handle_.get(), (char *)buffer,
+                        static_cast<int>(received));
       continue;
     }
 
+    // Handle buffer overflowing
     if (errno == ENOBUFS) {
       std::cerr << "Warning: Buffer overflows, packets are being dropped!\n";
       continue;
@@ -89,7 +93,7 @@ void NetfilterQueue::run() {
 
     if (errno == EINTR) {
       // interrupted by signal, check if we should continue
-      if (!running) {
+      if (!running_) {
         break;
       }
       continue;
@@ -102,15 +106,22 @@ void NetfilterQueue::run() {
   std::cout << "Exiting main packet processing loop.\n";
 }
 
+void NetfilterQueue::stop() { running_ = false; }
+
+bool NetfilterQueue::isRunning() const { return running_; }
+
 int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
                                          struct nfgenmsg *nfmsg,
                                          struct nfq_data *nfa, void *data) {
+  // cast the void pointer back to the class instance
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
 }
 
 int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
                                    struct nfgenmsg *nfmsg,
                                    struct nfq_data *nfa) {
+
+  // get the packet header
   struct nfqnl_msg_packet_hdr *ph = nfq_get_msg_packet_hdr(nfa);
   uint32_t id = 0;
 
@@ -154,6 +165,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 
     ///////////////////////////////////////////////////////////////////
 
+    // currently just accepting everything but that will change later
     return nfq_set_verdict(qh, id, NF_ACCEPT, payload_len, packet_data);
   } catch (std::exception &error) {
     std::cerr << "Error processing packet: " << error.what() << "\n";

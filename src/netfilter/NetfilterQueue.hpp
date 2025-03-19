@@ -2,20 +2,21 @@
 
 #pragma once
 
+#include <atomic>
 #include <csignal>
 #include <functional>
 #include <memory>
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
-volatile sig_atomic_t running = true;
-
 class NetfilterQueue {
   // NOTE: I'm using the obtuse netfilter naming conventions for convenience
-  // following examples, I've explained it all at the bottom
+  // in following examples, I've explained it all at the bottom
 public:
   NetfilterQueue();
   void run();
+  void stop();
+  bool isRunning() const;
 
 private:
   // this is a "static bridge" pattern which is required for interfacing C++
@@ -33,6 +34,9 @@ private:
 
   // file descriptor for netlink socket
   int fd_;
+
+  // thread safe flag for controlling the processing loop
+  std::atomic<bool> running_;
 
   // smart pointers for resource management
   std::unique_ptr<struct nfq_handle, decltype(&nfq_close)> handle_;

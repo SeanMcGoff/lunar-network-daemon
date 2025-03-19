@@ -21,6 +21,8 @@ void teardownIPTables();
 void signalHandler(int signal);
 void setupSignalHandlers();
 
+std::unique_ptr<NetfilterQueue> g_queue;
+
 int main() {
   std::cout << "Starting packet interception on " << WG_INTERFACE << "\n";
 
@@ -30,8 +32,13 @@ int main() {
     // iptables class ensures teardown on destruction
     IptablesManager iptables;
 
-    NetfilterQueue queue;
-    queue.run();
+    g_queue = std::make_unique<NetfilterQueue>();
+
+    // blocks until stopped by signal
+    g_queue->run();
+
+    // Clean up the queue
+    g_queue.reset();
 
   } catch (const std::exception &error) {
     std::cout << "Fatal error: " << error.what() << "\n";
@@ -42,8 +49,10 @@ int main() {
 }
 
 void signalHandler(int signal) {
-  std::cout << "Received signal " << signal << ", shutting down.\n";
-  running = false;
+  std::cout << "Received signal " << signal << ", shutting down." << std::endl;
+  if (g_queue) {
+    g_queue->stop();
+  }
 }
 
 void setupSignalHandlers() {
@@ -51,7 +60,14 @@ void setupSignalHandlers() {
   std::memset(&sa, 0, sizeof(sa));
   sa.sa_handler = signalHandler;
 
-  sigaction(SIGINT, &sa, nullptr);  // Ctrl+C
-  sigaction(SIGTERM, &sa, nullptr); // Termination signal
-  sigaction(SIGHUP, &sa, nullptr);  // Terminal closed
+  // Register for common termination signals
+  if (sigaction(SIGINT, &sa, nullptr) < 0) { // Ctrl+C
+    std::cerr << "Warning: Failed to set SIGINT handler" << std::endl;
+  }
+  if (sigaction(SIGTERM, &sa, nullptr) < 0) { // Termination signal
+    std::cerr << "Warning: Failed to set SIGTERM handler" << std::endl;
+  }
+  if (sigaction(SIGHUP, &sa, nullptr) < 0) { // Terminal closed
+    std::cerr << "Warning: Failed to set SIGHUP handler" << std::endl;
+  }
 }
