@@ -1,9 +1,14 @@
+// src/netfilter/NetfilterQueue.hpp
+
 #pragma once
 
+#include <csignal>
 #include <functional>
 #include <memory>
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
+
+volatile sig_atomic_t running = true;
 
 class NetfilterQueue {
   // NOTE: I'm using the obtuse netfilter naming conventions for convenience

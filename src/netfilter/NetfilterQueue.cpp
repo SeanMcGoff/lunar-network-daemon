@@ -1,3 +1,5 @@
+// src/netfilter/NetfilterQueue.cpp
+
 #include "NetfilterQueue.hpp"
 #include "configs.hpp"
 #include <cerrno>
@@ -11,8 +13,6 @@
 #include <stdexcept>
 
 #include "Packet.hpp"
-
-volatile sig_atomic_t running = true;
 
 NetfilterQueue::NetfilterQueue()
     : handle_(nullptr, nfq_close),

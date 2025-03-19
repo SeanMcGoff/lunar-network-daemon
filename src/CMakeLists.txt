@@ -46,6 +46,7 @@ target_link_libraries(lunar-network-daemon
     PRIVATE
         packet
         config
+        encap_netfilter
     PRIVATE
         ${NETFILTER_QUEUE_LIBRARY}
         ${NFNETLINK_LIBRARY}

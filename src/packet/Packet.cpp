@@ -1,4 +1,4 @@
-// Packet.cpp
+// src/packet/Packet.cpp
 
 #include "Packet.hpp"
 #include "configs.hpp"

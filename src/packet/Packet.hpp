@@ -1,4 +1,4 @@
-// Packet.hpp
+// src/packet/Packet.hpp
 
 // ---- Packet Usage ---- //
 
