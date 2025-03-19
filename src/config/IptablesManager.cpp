@@ -3,17 +3,7 @@
 #include <iostream>
 #include <spdlog/spdlog.h>
 
-IptablesManager::IptablesManager() { setupRules(); }
-
-IptablesManager::~IptablesManager() {
-  try {
-    teardownRules();
-  } catch (const std::exception &error) {
-    spdlog::error("Error tearing down iptables rules: {}", error.what());
-  }
-}
-
-void IptablesManager::setupRules() {
+IptablesManager::IptablesManager() {
   spdlog::info("Setting up iptables rules for {}.", WG_INTERFACE);
 
   // Forward wireguard traffic to nfqueue
@@ -40,31 +30,36 @@ void IptablesManager::setupRules() {
   spdlog::info("iptables rules set up successfully.");
 }
 
-void IptablesManager::teardownRules() {
-  spdlog::info("Tearing down iptables rules for {}.", WG_INTERFACE);
-
-  bool success = true;
-
-  // Remove incoming rule
+IptablesManager::~IptablesManager() {
   try {
-    executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
-                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
-  } catch (const std::exception &error) {
-    spdlog::warn("Error removing incoming iptables rules: {}", error.what());
-    success = false;
-  }
+    spdlog::info("Tearing down iptables rules for {}.", WG_INTERFACE);
 
-  // Remove outgoing rule
-  try {
-    executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
-                   " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
-  } catch (const std::exception &error) {
-    spdlog::warn("Failed to remove outgoing iptables rules: {}", error.what());
-    success = false;
-  }
+    bool success = true;
 
-  if (success) {
-    spdlog::info("Successfully removed iptables rules.");
+    // Remove incoming rule
+    try {
+      executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
+                     " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+    } catch (const std::exception &error) {
+      spdlog::warn("Error removing incoming iptables rules: {}", error.what());
+      success = false;
+    }
+
+    // Remove outgoing rule
+    try {
+      executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
+                     " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
+    } catch (const std::exception &error) {
+      spdlog::warn("Failed to remove outgoing iptables rules: {}",
+                   error.what());
+      success = false;
+    }
+
+    if (success) {
+      spdlog::info("Successfully removed iptables rules.");
+    }
+  } catch (const std::exception &error) {
+    spdlog::error("Error tearing down iptables rules: {}", error.what());
   }
 }
 
