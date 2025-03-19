@@ -10,8 +10,8 @@
 // constructor that takes ownership by copying
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received)
-    : id(id), length(length), mark(mark), time_received(time_received),
-      data(nullptr), owns_data(true) {
+    : id(id), data(nullptr), length(length), owns_data(true), mark(mark),
+      time_received(time_received) {
   if (data && length > 0) {
     // Copy data to take ownership with exception handling
     try {
@@ -36,8 +36,8 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
 Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received,
                bool copy_data)
-    : id(id), length(length), mark(mark), time_received(time_received),
-      data(nullptr), owns_data(copy_data) {
+    : id(id), data(nullptr), length(length), owns_data(copy_data), mark(mark),
+      time_received(time_received) {
   if (data && length > 0) {
     if (copy_data) {
       // Copy data to take ownership with exception handling
@@ -65,9 +65,9 @@ Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
 
 // copy constructor
 Packet::Packet(const Packet &other)
-    : id(other.id), length(other.length), mark(other.mark),
-      time_received(other.time_received), data(nullptr),
-      owns_data(other.owns_data), link_type(other.link_type) {
+    : id(other.id), data(nullptr), length(other.length),
+      owns_data(other.owns_data), link_type(other.link_type), mark(other.mark),
+      time_received(other.time_received) {
   if (other.data && other.length > 0) {
     if (owns_data) {
       try {
@@ -126,9 +126,9 @@ Packet &Packet::operator=(const Packet &other) {
 
 // move constructor
 Packet::Packet(Packet &&other) noexcept
-    : id(other.id), length(other.length), mark(other.mark),
-      time_received(other.time_received), data(other.data),
-      owns_data(other.owns_data), link_type(other.link_type) {
+    : id(other.id), data(other.data), length(other.length),
+      owns_data(other.owns_data), link_type(other.link_type), mark(other.mark),
+      time_received(other.time_received) {
   other.data = nullptr;
   other.length = 0;
   other.owns_data = false;
