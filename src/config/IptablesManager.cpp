@@ -1,10 +1,10 @@
 #include "IptablesManager.hpp"
 #include "configs.hpp"
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 IptablesManager::IptablesManager() {
-  std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
-
+  spdlog::info("Setting up iptables rules for {}.", WG_INTERFACE);
   // Forward wireguard traffic to nfqueue
   // -A FORWARD: Append a rule to the FORWARD chain (ie. packets being routed
   // through this host) -i wg0: Match packets whose incoming (-i meaning
@@ -28,7 +28,7 @@ IptablesManager::IptablesManager() {
 
 IptablesManager::~IptablesManager() {
   try {
-    std::cout << "Tearing down iptables rules..." << "\n";
+    spdlog::info("Tearing down iptables rules for {}.", WG_INTERFACE);
 
     bool success = true;
 
@@ -37,8 +37,9 @@ IptablesManager::~IptablesManager() {
       executeCommand("iptables -D FORWARD -i " + WG_INTERFACE +
                      " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
     } catch (const std::exception &error) {
-      std::cerr << "Warning: Failed to remove incoming iptables rules: "
-                << error.what() << "\n";
+
+      spdlog::warn("Failed to remove incoming iptables rules: {}",
+                   error.what());
       success = false;
     }
 
@@ -47,22 +48,24 @@ IptablesManager::~IptablesManager() {
       executeCommand("iptables -D FORWARD -o " + WG_INTERFACE +
                      " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
     } catch (const std::exception &error) {
-      std::cerr << "Warning: Failed to remove outgoing iptables rules: "
-                << error.what() << "\n";
+
+      spdlog::warn("Failed to remove outgoing iptables rules: {}",
+                   error.what());
       success = false;
     }
 
     if (success) {
-      std::cout << "Successfully removed iptables rules.\n";
+      spdlog::info("Successfully removed iptables rules.");
     }
   } catch (const std::exception &error) {
-    std::cerr << "Error tearing down iptables rules: " << error.what() << "\n";
+    spdlog::error("Error tearing down iptables rules: {}", error.what());
   }
 }
 
 void IptablesManager::executeCommand(const std::string &command) {
   int result = system(command.c_str());
   if (result != 0) {
+    spdlog::critical("Command failed: {} (exit code: {})", command, result);
     throw std::runtime_error("Command failed: " + command +
                              " (exit code: " + std::to_string(result) + ")");
   }
