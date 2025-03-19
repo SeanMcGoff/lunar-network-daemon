@@ -49,7 +49,7 @@ void IptablesManager::teardownRules() {
                    " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
   } catch (const std::exception &error) {
     std::cerr << "Warning: Failed to remove incoming iptables rules: "
-              << error.what() << std::endl;
+              << error.what() << "\n";
     success = false;
   }
 
@@ -59,12 +59,12 @@ void IptablesManager::teardownRules() {
                    " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
   } catch (const std::exception &error) {
     std::cerr << "Warning: Failed to remove outgoing iptables rules: "
-              << error.what() << std::endl;
+              << error.what() << "\n";
     success = false;
   }
 
   if (success) {
-    std::cout << "Successfully removed iptables rules" << std::endl;
+    std::cout << "Successfully removed iptables rules.\n";
   }
 }
 

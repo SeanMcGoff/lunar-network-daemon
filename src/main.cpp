@@ -49,7 +49,7 @@ int main() {
 }
 
 void signalHandler(int signal) {
-  std::cout << "Received signal " << signal << ", shutting down." << std::endl;
+  std::cout << "Received signal " << signal << ", shutting down.\n";
   if (g_queue) {
     g_queue->stop();
   }
@@ -62,12 +62,12 @@ void setupSignalHandlers() {
 
   // Register for common termination signals
   if (sigaction(SIGINT, &sa, nullptr) < 0) { // Ctrl+C
-    std::cerr << "Warning: Failed to set SIGINT handler" << std::endl;
+    std::cerr << "Warning: Failed to set SIGINT handler\n";
   }
   if (sigaction(SIGTERM, &sa, nullptr) < 0) { // Termination signal
-    std::cerr << "Warning: Failed to set SIGTERM handler" << std::endl;
+    std::cerr << "Warning: Failed to set SIGTERM handler\n";
   }
   if (sigaction(SIGHUP, &sa, nullptr) < 0) { // Terminal closed
-    std::cerr << "Warning: Failed to set SIGHUP handler" << std::endl;
+    std::cerr << "Warning: Failed to set SIGHUP handler\n";
   }
 }

@@ -19,12 +19,12 @@ NetfilterQueue::NetfilterQueue()
     : running_(true), handle_(nullptr, nfq_close),
       queue_handle_(nullptr, [](struct nfq_q_handle *qh) {
         if (qh) {
-          std::cout << "Destroying queue..." << std::endl;
+          std::cout << "Destroying queue.\n";
           nfq_destroy_queue(qh);
         }
       }) {
 
-  std::cout << "Opening Netfilter queue..." << std::endl;
+  std::cout << "Opening Netfilter queue.\n";
 
   // Open queue handle
   struct nfq_handle *h = nfq_open();
@@ -66,7 +66,7 @@ NetfilterQueue::NetfilterQueue()
   // Increase socket buffer size
   int opt = SOCKET_BUFFER_SIZE;
   if (setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-    std::cerr << "Warning: Could not increase socket buffer size" << std::endl;
+    std::cerr << "Warning: Could not increase socket buffer size.\n";
   }
 }
 
