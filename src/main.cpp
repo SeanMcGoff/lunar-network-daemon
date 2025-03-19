@@ -16,8 +16,6 @@
 #include "NetfilterQueue.hpp"
 #include "configs.hpp"
 
-void setupIPTables();
-void teardownIPTables();
 void signalHandler(int signal);
 void setupSignalHandlers();
 
