@@ -10,6 +10,7 @@
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnfnetlink/linux_nfnetlink.h>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
 
 #include "NetfilterQueue.hpp"
 #include "Packet.hpp"
@@ -66,12 +67,12 @@ NetfilterQueue::NetfilterQueue()
   // Increase socket buffer size
   int opt = SOCKET_BUFFER_SIZE;
   if (setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-    std::cerr << "Warning: Could not increase socket buffer size.\n";
+    spdlog::warn("Could not increase socket buffer size.");
   }
 }
 
 void NetfilterQueue::run() {
-  std::cout << "Starting main packet processing loop.\n";
+  spdlog::info("Starting main packet processing loop.");
 
   char buffer[MAX_PACKET_SIZE] __attribute__((aligned));
 
@@ -87,7 +88,7 @@ void NetfilterQueue::run() {
 
     // Handle buffer overflowing
     if (errno == ENOBUFS) {
-      std::cerr << "Warning: Buffer overflows, packets are being dropped!\n";
+      spdlog::warn("Buffer overflow, packets are being dropped.");
       continue;
     }
 
@@ -103,7 +104,7 @@ void NetfilterQueue::run() {
     throw std::runtime_error("recv() failed");
   }
 
-  std::cout << "Exiting main packet processing loop.\n";
+  spdlog::info("Exiting main packet processing loop.");
 }
 
 void NetfilterQueue::stop() { running_ = false; }
@@ -129,7 +130,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
   if (ph) {
     id = ntohl(ph->packet_id);
   } else {
-    std::cerr << "Warning: Couldn't get packet header.\n";
+    spdlog::warn("Couldn't get packet header.");
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 
@@ -141,7 +142,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
   int payload_len = nfq_get_payload(nfa, &packet_data);
 
   if (payload_len < 0) {
-    std::cerr << "Error: Couldm't get packet payload.\n";
+    spdlog::warn("Couldn't get packet payload.");
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 
@@ -168,7 +169,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     // currently just accepting everything but that will change later
     return nfq_set_verdict(qh, id, NF_ACCEPT, payload_len, packet_data);
   } catch (std::exception &error) {
-    std::cerr << "Error processing packet: " << error.what() << "\n";
+    spdlog::error("Error processing packet: {}", error.what());
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 }
