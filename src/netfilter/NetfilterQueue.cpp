@@ -1,10 +1,16 @@
 #include "NetfilterQueue.hpp"
 #include "configs.hpp"
 #include <cerrno>
+#include <chrono>
 #include <csignal>
+#include <exception>
 #include <iostream>
 #include <libnetfilter_queue/libnetfilter_queue.h>
+#include <libnfnetlink/linux_nfnetlink.h>
+#include <netinet/in.h>
 #include <stdexcept>
+
+#include "Packet.hpp"
 
 volatile sig_atomic_t running = true;
 
@@ -100,4 +106,57 @@ int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
                                          struct nfgenmsg *nfmsg,
                                          struct nfq_data *nfa, void *data) {
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
+}
+
+int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
+                                   struct nfgenmsg *nfmsg,
+                                   struct nfq_data *nfa) {
+  struct nfqnl_msg_packet_hdr *ph = nfq_get_msg_packet_hdr(nfa);
+  uint32_t id = 0;
+
+  // get packet id
+  if (ph) {
+    id = ntohl(ph->packet_id);
+  } else {
+    std::cerr << "Warning: Couldn't get packet header.\n";
+    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+  }
+
+  // get packet mark
+  uint32_t mark = nfq_get_nfmark(nfa);
+
+  // get packet payload
+  uint8_t *packet_data = nullptr;
+  int payload_len = nfq_get_payload(nfa, &packet_data);
+
+  if (payload_len < 0) {
+    std::cerr << "Error: Couldm't get packet payload.\n";
+    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+  }
+
+  try {
+    // Process the packet
+    // This is where the magic will theoretically happen
+    // If this code ever sees the light of day, that is
+
+    auto now = std::chrono::steady_clock::now();
+    Packet packet(id, packet_data, payload_len, mark, now, false);
+
+    ///////////////////////////////////////////////////////////////////
+
+    // PACKET PROCESSING LOGIC
+    // Just printing classification for now
+
+    std::cout << "Packet received!\n";
+    std::cout << "ID: " << id;
+    std::cout << "\nClassification: " << packet.getLinkTypeName();
+    std::cout << "\nSize: " << payload_len << " bytes\n";
+
+    ///////////////////////////////////////////////////////////////////
+
+    return nfq_set_verdict(qh, id, NF_ACCEPT, payload_len, packet_data);
+  } catch (std::exception &error) {
+    std::cerr << "Error processing packet: " << error.what() << "\n";
+    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+  }
 }

@@ -277,3 +277,18 @@ const std::string Packet::getLinkTypeName(Packet::LinkType type) {
     return "OTHER";
   }
 }
+
+const std::string Packet::getLinkTypeName() {
+  switch (link_type) {
+  case Packet::LinkType::EARTH_TO_EARTH:
+    return "EARTH_TO_EARTH";
+  case Packet::LinkType::EARTH_TO_MOON:
+    return "EARTH_TO_MOON";
+  case Packet::LinkType::MOON_TO_EARTH:
+    return "MOON_TO_EARTH";
+  case Packet::LinkType::MOON_TO_MOON:
+    return "MOON_TO_MOON";
+  default:
+    return "OTHER";
+  }
+}

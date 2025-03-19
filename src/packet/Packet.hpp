@@ -111,6 +111,7 @@ public:
   void setMark(uint32_t new_mark);
   std::chrono::steady_clock::time_point getTimeReceived() const;
   LinkType getLinkType() const;
+  const std::string getLinkTypeName();
   const std::string getLinkTypeName(Packet::LinkType type);
 
 private:
