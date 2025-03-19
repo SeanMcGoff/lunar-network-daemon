@@ -24,4 +24,5 @@ target_link_libraries(lunar-network-daemon
     ${NETFILTER_QUEUE_LIBRARY}
     ${NFNETLINK_LIBRARY}
     spdlog::spdlog
+    fmt::fmt
 )

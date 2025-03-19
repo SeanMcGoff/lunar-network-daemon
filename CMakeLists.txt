@@ -66,6 +66,7 @@ if(NOT NFNETLINK_INCLUDE_DIR)
     message(FATAL_ERROR "libnfnetlink headers not found. Please install libnfnetlink-dev package.")
 endif()
 
+find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
 add_subdirectory(src)

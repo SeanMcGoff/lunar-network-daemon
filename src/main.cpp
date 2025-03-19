@@ -22,12 +22,12 @@
 
 void signalHandler(int signal);
 void setupSignalHandlers();
+void initializeLogger();
 
 std::unique_ptr<NetfilterQueue> g_queue;
 
 int main() {
-  auto file_logger = spdlog::basic_logger_mt("file_logger", "logs/daemon.log");
-  spdlog::set_default_logger(file_logger);
+  initializeLogger();
 
   std::cout << "Starting packet interception on " << WG_INTERFACE << "\n";
   spdlog::info("Starting packet interception on {}", WG_INTERFACE);
@@ -52,6 +52,15 @@ int main() {
 
   spdlog::info("Shutdown complete.");
   return 0;
+}
+
+void initializeLogger() {
+  if (!spdlog::get("file_logger")) {
+    auto file_logger = spdlog::basic_logger_mt("file_logger", "run.log", true);
+    spdlog::set_default_logger(file_logger);
+  }
+
+  spdlog::info("Logger initialized successfully.");
 }
 
 void signalHandler(int signal) {
