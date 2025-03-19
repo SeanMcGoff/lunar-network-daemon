@@ -45,5 +45,5 @@ constexpr int QUEUE_NUM = 0;
 constexpr int SOCKET_BUFFER_SIZE = 1024 * 1024; // 1MB socket buffer
 constexpr int MAX_PACKET_SIZE = 65536;          // 64KB max packet size
 
-// Interfact name
+// Interface name
 const std::string WG_INTERFACE = "wg0";
