@@ -1,5 +1,25 @@
 // src/netfilter/NetfilterQueue.hpp
 
+// ---- NetfilterQueue Usage ---- //
+
+// NetfilterQueue interfaces with Linux's netfilter library
+// it captures packets that have been directed to NFQUEUE by iptables rules
+
+// Example:
+// NetfilterQueue queue;
+// queue.run(); // this blocks until queue.stop() is called from a signal
+
+// in main, queue is a global pointer, instantiate using std::make_unique
+
+// the run() method has an internal loop processing packets as they arrive
+// Each packet triggers the packetCallback method, this is where the processing
+// pipeline will be called
+
+// if modifying this class:
+// - packetCallbackStatic is needed for C++ to C callback conversion
+// - smart pointers should handle resource cleanup automatically
+// - the socket buffer size is configurable in configs.hpp
+
 #pragma once
 
 #include <atomic>
@@ -10,8 +30,9 @@
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
 class NetfilterQueue {
-  // NOTE: I'm using the obtuse netfilter naming conventions for convenience
-  // in following examples, I've explained it all at the bottom
+  // NOTE: I'm using the very obtuse netfilter naming conventions for
+  // convenience (easier to follow examples), I've explained it all (mostly) at
+  // the bottom
 public:
   NetfilterQueue();
   void run();
