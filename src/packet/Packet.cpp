@@ -7,6 +7,8 @@
 #include <netinet/in.h> // ntohl
 #include <stdexcept>
 
+#include <spdlog/spdlog.h>
+
 // constructor that takes ownership by copying
 Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
                std::chrono::steady_clock::time_point time_received)
@@ -19,6 +21,7 @@ Packet::Packet(uint32_t id, uint8_t *data, size_t length, uint32_t mark,
       std::memcpy(this->data, data, length);
     } catch (const std::bad_alloc &) {
       // Propagate the exception (caller needs to handle it)
+      spdlog::error("Failed to copy packet data");
       throw;
     }
   }
@@ -46,6 +49,7 @@ Packet::Packet(uint32_t id, const uint8_t *data, size_t length, uint32_t mark,
         std::memcpy(this->data, data, length);
       } catch (const std::bad_alloc &) {
         // Propagate the exception, caller needs to handle it
+        spdlog::error("Failed to copy packet data");
         throw;
       }
     } else {
@@ -75,6 +79,7 @@ Packet::Packet(const Packet &other)
         std::memcpy(this->data, other.data, other.length);
       } catch (const std::bad_alloc &) {
         // Propagate the exception - caller must handle it
+        spdlog::error("Failed to copy packet data");
         throw;
       }
     } else {
@@ -96,6 +101,7 @@ Packet &Packet::operator=(const Packet &other) {
         std::memcpy(new_data, other.data, other.length);
       } catch (const std::bad_alloc &) {
         // Nothing modified yet so propagate exception
+        spdlog::error("Failed to copy packet data");
         throw;
       }
     }
