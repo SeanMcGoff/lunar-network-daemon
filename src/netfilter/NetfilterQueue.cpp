@@ -125,6 +125,21 @@ int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
 }
 
+// The simulation function that applies delay, and bit corruption.
+bool simulate_moon_earth_channel(Packet &packet) {
+  // 1. Calculate total delay: base delay plus jitter.
+  double Delay = generateBaseDelay(); // in seconds
+
+  // 2. Apply delay (blocking call). (Note: this will block the current thread,
+  // which should not be an issue in this case since we are running NFQUEUE
+  std::this_thread::sleep_for(std::chrono::duration<double>(Delay));
+
+  corrupt_packet(packet);
+  mario_cart_speedrun_simulation(packet);
+
+  return true; // Indicate simulation was successful.
+}
+
 int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
                                    struct nfgenmsg *nfmsg,
                                    struct nfq_data *nfa) {
