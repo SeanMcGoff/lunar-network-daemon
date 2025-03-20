@@ -125,6 +125,17 @@ int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
 }
 
+// Generate a base delay in seconds
+static double generateBaseDelay() {
+  thread_local std::mt19937 engine(std::random_device{}());
+  std::poisson_distribution<int> distribution(transmission_delay);
+  double delay = distribution(engine);
+  if (delay < transmission_min) {
+    delay = transmission_min;
+  }
+  return delay;
+}
+
 // Helper function: Corrupt a small block of the packet's payload
 // This function selects a random block (based on a Gaussian-distributed block
 // size) and overwrites it with random bytes.
