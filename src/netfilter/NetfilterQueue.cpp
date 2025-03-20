@@ -125,6 +125,27 @@ int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
 }
 
+// Flip a random bit due to solar flares
+static void mario_cart_speedrun_simulation(Packet &packet) {
+  uint8_t *data = packet.getMutableData();
+  size_t len = packet.getLength();
+  if (!data || len == 0) {
+    return;
+  }
+  thread_local std::mt19937 engine(std::random_device{}());
+
+  std::uniform_int_distribution<int> do_a_mario_cart_speedrun(0, 100000);
+
+  if (do_a_mario_cart_speedrun(engine) == 0) {
+    std::cout << "It's a me, Mario!\n";
+    std::uniform_int_distribution<size_t> byteDist(0, len - 1);
+    std::uniform_int_distribution<int> bitPosDist(0, 7);
+    size_t bytePos = byteDist(engine);
+    int bitPos = bitPosDist(engine);
+    data[bytePos] ^= (1 << bitPos);
+  }
+}
+
 // Generate a base delay in seconds
 static double generateBaseDelay() {
   thread_local std::mt19937 engine(std::random_device{}());
