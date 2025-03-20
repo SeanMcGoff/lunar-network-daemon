@@ -2,6 +2,8 @@
 #include "configs.hpp"
 #include <iostream>
 
+// fix
+
 IptablesManager::IptablesManager() {
   std::cout << "Setting up iptables rules for " << WG_INTERFACE << ".\n";
 
