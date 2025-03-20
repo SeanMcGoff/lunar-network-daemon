@@ -163,17 +163,13 @@ static double generateBaseDelay() {
 static bool corrupt_packet(Packet &packet) {
   uint8_t *data = packet.getMutableData();
   size_t len = packet.getLength();
-  if (!data ||
-      len < 20) { // Require a minimum length to have a meaningful block.
-    return false;
-  }
   thread_local std::mt19937 engine(std::random_device{}());
 
   std::normal_distribution<double> blockSizeDist(5.0, 3.0);
   int blockSize = std::round(blockSizeDist(engine));
   blockSize = std::max(1, blockSize);
   // Clamp blockSize to a maximum of one-tenth of the packet length.
-  blockSize = std::min(blockSize, static_cast<int>(len / 10));
+  blockSize = std::max(std::min(blockSize, static_cast<int>(len / 10)), 1);
 
   // Choose a random starting index ensuring the block fits inside the packet.
   std::uniform_int_distribution<size_t> startDist(0, len - blockSize);
@@ -195,6 +191,7 @@ bool simulate_moon_earth_channel(Packet &packet) {
   thread_local std::mt19937 engine(std::random_device{}());
   std::uniform_real_distribution<double> dist(0.0, 1.0);
   if (dist(engine) < 0.05) {
+    packet.getMutableData()[0] = 0x00;
     return true;
   }
 
