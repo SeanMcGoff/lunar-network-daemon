@@ -125,6 +125,37 @@ int NetfilterQueue::packetCallbackStatic(struct nfq_q_handle *qh,
   return static_cast<NetfilterQueue *>(data)->packetCallback(qh, nfmsg, nfa);
 }
 
+// Helper function: Corrupt a small block of the packet's payload
+// This function selects a random block (based on a Gaussian-distributed block
+// size) and overwrites it with random bytes.
+static bool corrupt_packet(Packet &packet) {
+  uint8_t *data = packet.getMutableData();
+  size_t len = packet.getLength();
+  if (!data ||
+      len < 20) { // Require a minimum length to have a meaningful block.
+    return false;
+  }
+  thread_local std::mt19937 engine(std::random_device{}());
+
+  std::normal_distribution<double> blockSizeDist(5.0, 3.0);
+  int blockSize = std::round(blockSizeDist(engine));
+  blockSize = std::max(1, blockSize);
+  // Clamp blockSize to a maximum of one-tenth of the packet length.
+  blockSize = std::min(blockSize, static_cast<int>(len / 10));
+
+  // Choose a random starting index ensuring the block fits inside the packet.
+  std::uniform_int_distribution<size_t> startDist(0, len - blockSize);
+  size_t startIndex = startDist(engine);
+
+  // Overwrite the selected block with random bytes.
+  std::uniform_int_distribution<int> byteDist(0, 255);
+  for (size_t i = startIndex; i < startIndex + blockSize; i++) {
+    data[i] = static_cast<uint8_t>(byteDist(engine));
+  }
+
+  return true;
+}
+
 // The simulation function that applies delay, and bit corruption.
 bool simulate_moon_earth_channel(Packet &packet) {
   // 1. Calculate total delay: base delay plus jitter.
