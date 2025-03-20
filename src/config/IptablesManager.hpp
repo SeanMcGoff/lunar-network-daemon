@@ -31,7 +31,5 @@ public:
   ~IptablesManager();
 
 private:
-  void setupRules();
-  void teardownRules();
   void executeCommand(const std::string &command);
 };
