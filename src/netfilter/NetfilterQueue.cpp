@@ -1,19 +1,27 @@
 // src/netfilter/NetfilterQueue.cpp
 
-#include <cerrno>
-#include <chrono>
-#include <csignal>
-#include <exception>
-#include <iostream>
-#include <stdexcept>
-
-#include <libnetfilter_queue/libnetfilter_queue.h>
-#include <libnfnetlink/linux_nfnetlink.h>
-#include <netinet/in.h>
-
 #include "NetfilterQueue.hpp"
 #include "Packet.hpp"
 #include "configs.hpp"
+
+#include <algorithm>
+#include <cerrno>
+#include <chrono>
+#include <cmath>
+#include <csignal>
+#include <exception>
+#include <iostream>
+
+#include <libnetfilter_queue/libnetfilter_queue.h>
+#include <libnfnetlink/linux_nfnetlink.h>
+
+#include <netinet/in.h>
+#include <random>
+#include <stdexcept>
+#include <thread>
+
+int transmission_delay = 1.38;
+float transmission_min = 1.3;
 
 NetfilterQueue::NetfilterQueue()
     : running_(true), handle_(nullptr, nfq_close),
@@ -147,8 +155,6 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 
   try {
     // Process the packet
-    // This is where the magic will theoretically happen
-    // If this code ever sees the light of day, that is
 
     auto now = std::chrono::steady_clock::now();
     Packet packet(id, packet_data, payload_len, mark, now, false);
@@ -162,6 +168,12 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     std::cout << "ID: " << id;
     std::cout << "\nClassification: " << packet.getLinkTypeName();
     std::cout << "\nSize: " << payload_len << " bytes\n";
+
+    bool simulation_successfull = simulate_moon_earth_channel(packet);
+
+    if (!simulation_successfull) {
+      std::cout << "Simulation failed!\n";
+    }
 
     ///////////////////////////////////////////////////////////////////
 
