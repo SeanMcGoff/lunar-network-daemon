@@ -169,6 +169,14 @@ static bool corrupt_packet(Packet &packet) {
 
 // The simulation function that applies delay, and bit corruption.
 bool simulate_moon_earth_channel(Packet &packet) {
+
+  // Drop the packed if vibes are bad
+  thread_local std::mt19937 engine(std::random_device{}());
+  std::uniform_real_distribution<double> dist(0.0, 1.0);
+  if (dist(engine) < 0.05) {
+    return true;
+  }
+
   // 1. Calculate total delay: base delay plus jitter.
   double Delay = generateBaseDelay(); // in seconds
 
