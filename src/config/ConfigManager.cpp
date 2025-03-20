@@ -6,6 +6,7 @@
 #include <iostream>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 // Anonymous namespace (to avoid cluttering global namespace)
 namespace {
@@ -27,8 +28,9 @@ ConfigManager::ConfigManager(const std::string &config_file)
   try {
     loadConfig();
   } catch (const std::exception &error) {
-    std::cerr << "No previous configuration available: " << error.what()
-              << "\nUsing default configuration.\n";
+    spdlog::warn("No previous configuration available: {}. Using default "
+                 "configuration.",
+                 error.what());
     loadDefaultConfig();
   }
 }
@@ -69,16 +71,15 @@ void ConfigManager::reloadConfig() {
   try {
     loadConfig();
   } catch (const std::exception &error) {
-    std::cerr << "Reload failed: " << error.what()
-              << "\nKeeping previous configuration.\n";
+    spdlog::error("Reload failed: {}. Keeping previous configuration.",
+                  error.what());
   }
 }
 
 void ConfigManager::loadConfig() {
   std::ifstream infile(config_file_);
   if (!infile) {
-    std::cerr << "Error opening config file: " << config_file_
-              << "\nUsing previous configuration if available.\n";
+    spdlog::critical("Error opening config file: {}", config_file_);
     throw std::runtime_error("Error opening config file: " + config_file_);
   }
 
@@ -94,10 +95,11 @@ void ConfigManager::loadConfig() {
                 DEFAULT_MOON_TO_EARTH);
     loadSection(j, "moon_to_moon", config_.moon_to_moon, DEFAULT_MOON_TO_MOON);
   } catch (const std::exception &error) {
-    std::cerr << "Error parsing config file: " << error.what()
-              << ".\nUsing previous configuration if available.\n"
-              << "Note: this error may occur while editing the config file "
-                 "manually.\n";
+    spdlog::critical("Error parsing config file: {}. Using previous "
+                     "configuration if available. Note: this error may occur "
+                     "while editing the config file "
+                     "manually.",
+                     error.what());
     throw;
   }
 }
@@ -117,8 +119,7 @@ namespace {
 double getDoubleWithLog(const nm::json &j, const std::string &key,
                         const double defaultValue) {
   if (!j.contains(key)) {
-    std::cerr << "Key '" << key << "' not found, using default " << defaultValue
-              << ".\n";
+    spdlog::warn("Key '{}' not found, using default {}.", key, defaultValue);
     return defaultValue;
   }
   return j.value(key, defaultValue);
@@ -127,7 +128,7 @@ double getDoubleWithLog(const nm::json &j, const std::string &key,
 // Helper function: Load a section if available, else log an error.
 bool loadSectionExists(const nm::json &j, const std::string &section) {
   if (!j.contains(section)) {
-    std::cerr << "Section '" << section << "' not found in configuration.\n";
+    spdlog::error("Section '{}' not found in configuration.", section);
     return false;
   }
   return true;
@@ -171,6 +172,7 @@ void loadSection(const nm::json &j, const std::string &sectionName,
     auto &sec = j[sectionName];
     loadLinkProperties(sec, target, defaults);
   } else {
+    spdlog::critical("Section '{}' missing in config file.", sectionName);
     throw std::runtime_error(sectionName + " section missing in config file.");
   }
 }

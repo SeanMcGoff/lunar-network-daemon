@@ -10,6 +10,7 @@
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <libnfnetlink/linux_nfnetlink.h>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
 
 #include "NetfilterQueue.hpp"
 #include "Packet.hpp"
@@ -19,12 +20,12 @@ NetfilterQueue::NetfilterQueue()
     : running_(true), handle_(nullptr, nfq_close),
       queue_handle_(nullptr, [](struct nfq_q_handle *qh) {
         if (qh) {
-          std::cout << "Destroying queue.\n";
+          spdlog::info("Destroying queue.");
           nfq_destroy_queue(qh);
         }
       }) {
 
-  std::cout << "Opening Netfilter queue.\n";
+  spdlog::info("Opening Netfilter queue.");
 
   // Open queue handle
   struct nfq_handle *h = nfq_open();
@@ -42,7 +43,7 @@ NetfilterQueue::NetfilterQueue()
     throw std::runtime_error("Failed to bind IPv4 to netfilter queue");
   }
 
-  std::cout << "Creating queue and setting callback..." << "\n";
+  spdlog::info("Creating queue and setting callback...");
 
   // Create the queue with the callback function
   struct nfq_q_handle *qh = nfq_create_queue(
@@ -66,12 +67,12 @@ NetfilterQueue::NetfilterQueue()
   // Increase socket buffer size
   int opt = SOCKET_BUFFER_SIZE;
   if (setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-    std::cerr << "Warning: Could not increase socket buffer size.\n";
+    spdlog::warn("Could not increase socket buffer size.");
   }
 }
 
 void NetfilterQueue::run() {
-  std::cout << "Starting main packet processing loop.\n";
+  spdlog::info("Starting main packet processing loop.");
 
   char buffer[MAX_PACKET_SIZE] __attribute__((aligned));
 
@@ -87,7 +88,7 @@ void NetfilterQueue::run() {
 
     // Handle buffer overflowing
     if (errno == ENOBUFS) {
-      std::cerr << "Warning: Buffer overflows, packets are being dropped!\n";
+      spdlog::warn("Buffer overflow, packets are being dropped.");
       continue;
     }
 
@@ -103,7 +104,7 @@ void NetfilterQueue::run() {
     throw std::runtime_error("recv() failed");
   }
 
-  std::cout << "Exiting main packet processing loop.\n";
+  spdlog::info("Exiting main packet processing loop.");
 }
 
 void NetfilterQueue::stop() { running_ = false; }
@@ -129,7 +130,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
   if (ph) {
     id = ntohl(ph->packet_id);
   } else {
-    std::cerr << "Warning: Couldn't get packet header.\n";
+    spdlog::warn("Couldn't get packet header.");
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 
@@ -141,7 +142,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
   int payload_len = nfq_get_payload(nfa, &packet_data);
 
   if (payload_len < 0) {
-    std::cerr << "Error: Couldm't get packet payload.\n";
+    spdlog::warn("Couldn't get packet payload.");
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 
@@ -158,17 +159,17 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     // PACKET PROCESSING LOGIC
     // Just printing classification for now
 
-    std::cout << "Packet received!\n";
-    std::cout << "ID: " << id;
-    std::cout << "\nClassification: " << packet.getLinkTypeName();
-    std::cout << "\nSize: " << payload_len << " bytes\n";
+    spdlog::info("Packet received!");
+    spdlog::info("ID: {}", id);
+    spdlog::info("Classification: {}", packet.getLinkTypeName());
+    spdlog::info("Size: {} bytes", payload_len);
 
     ///////////////////////////////////////////////////////////////////
 
     // currently just accepting everything but that will change later
     return nfq_set_verdict(qh, id, NF_ACCEPT, payload_len, packet_data);
   } catch (std::exception &error) {
-    std::cerr << "Error processing packet: " << error.what() << "\n";
+    spdlog::error("Error processing packet: {}", error.what());
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
   }
 }

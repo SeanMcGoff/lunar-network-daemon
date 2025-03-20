@@ -16,13 +16,21 @@
 #include "NetfilterQueue.hpp"
 #include "configs.hpp"
 
+// Logging
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 void signalHandler(int signal);
 void setupSignalHandlers();
+void initializeLogger();
 
 std::unique_ptr<NetfilterQueue> g_queue;
 
 int main() {
+  initializeLogger();
+
   std::cout << "Starting packet interception on " << WG_INTERFACE << "\n";
+  spdlog::info("Starting packet interception on {}", WG_INTERFACE);
 
   try {
     setupSignalHandlers();
@@ -39,15 +47,25 @@ int main() {
     g_queue.reset();
 
   } catch (const std::exception &error) {
-    std::cout << "Fatal error: " << error.what() << "\n";
+    spdlog::critical("Fatal error: {}", error.what());
   }
 
-  std::cout << "Shutdown complete.\n";
+  spdlog::info("Shutdown complete.");
   return 0;
+}
+
+void initializeLogger() {
+  if (!spdlog::get("file_logger")) {
+    auto file_logger = spdlog::basic_logger_mt("file_logger", "run.log", true);
+    spdlog::set_default_logger(file_logger);
+  }
+
+  spdlog::info("Logger initialized successfully.");
 }
 
 void signalHandler(int signal) {
   std::cout << "Received signal " << signal << ", shutting down.\n";
+  spdlog::info("Received signal {}, shutting down.", signal);
   if (g_queue) {
     g_queue->stop();
   }
@@ -60,12 +78,12 @@ void setupSignalHandlers() {
 
   // Register for common termination signals
   if (sigaction(SIGINT, &sa, nullptr) < 0) { // Ctrl+C
-    std::cerr << "Warning: Failed to set SIGINT handler\n";
+    spdlog::warn("Failed to set SIGINT handler");
   }
   if (sigaction(SIGTERM, &sa, nullptr) < 0) { // Termination signal
-    std::cerr << "Warning: Failed to set SIGTERM handler\n";
+    spdlog::warn("Failed to set SIGTERM handler");
   }
   if (sigaction(SIGHUP, &sa, nullptr) < 0) { // Terminal closed
-    std::cerr << "Warning: Failed to set SIGHUP handler\n";
+    spdlog::warn("Failed to set SIGHUP handler");
   }
 }
