@@ -9,6 +9,8 @@
 #include <chrono>
 #include <cmath>
 #include <csignal>
+#include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <iostream>
 
@@ -158,30 +160,89 @@ static double generateBaseDelay() {
 }
 
 // Helper function: Corrupt a small block of the packet's payload
-// This function selects a random block (based on a Gaussian-distributed block
-// size) and overwrites it with random bytes.
 static bool corrupt_packet(Packet &packet) {
   uint8_t *data = packet.getMutableData();
   size_t len = packet.getLength();
-  thread_local std::mt19937 engine(std::random_device{}());
+  constexpr size_t block_size = 64;
+  bool error_occurred = false;
 
-  std::normal_distribution<double> blockSizeDist(5.0, 3.0);
-  int blockSize = std::round(blockSizeDist(engine));
-  blockSize = std::max(1, blockSize);
-  // Clamp blockSize to a maximum of one-tenth of the packet length.
-  blockSize = std::max(std::min(blockSize, static_cast<int>(len / 10)), 1);
+  // Define the six states.
+  constexpr int NUM_STATES = 6;
 
-  // Choose a random starting index ensuring the block fits inside the packet.
-  std::uniform_int_distribution<size_t> startDist(0, len - blockSize);
-  size_t startIndex = startDist(engine);
+  // Transition matrix: rows are current state, columns are next state.
+  double transition_matrix[NUM_STATES][NUM_STATES] = {
+      {0.95, 0.04, 0.005, 0.005, 0.0, 0.0}, // from state 0 (no corruption)
+      {0.10, 0.80, 0.08, 0.02, 0.0, 0.0},   // from state 1 (very good)
+      {0.05, 0.10, 0.70, 0.10, 0.05, 0.0},  // from state 2 (good)
+      {0.02, 0.05, 0.15, 0.60, 0.15, 0.03}, // from state 3 (regular)
+      {0.01, 0.02, 0.07, 0.20, 0.60, 0.10}, // from state 4 (bad)
+      {0.05, 0.05, 0.10, 0.20, 0.30, 0.30}  // from state 5 (very bad)
+  };
 
-  // Overwrite the selected block with random bytes.
-  std::uniform_int_distribution<int> byteDist(0, 255);
-  for (size_t i = startIndex; i < startIndex + blockSize; i++) {
-    data[i] = static_cast<uint8_t>(byteDist(engine));
+  // Corruption parameters for states 0-5: (mean, std dev)
+  struct CorruptionParam {
+    double mean;
+    double std;
+  };
+  CorruptionParam corruption_params[NUM_STATES] = {
+      {0, 0},   // state 0: no corruption
+      {1, 0.5}, // state 1: very good (minimal corruption)
+      {2, 1},   // state 2: good (low-level corruption)
+      {3, 2},   // state 3: regular (moderate corruption)
+      {5, 3},   // state 4: bad (severe corruption)
+      {12, 3}   // state 5: very bad (extensive corruption)
+  };
+
+  // Setup random number generators.
+  std::random_device rd;
+  std::mt19937 rng(rd());
+  std::uniform_int_distribution<int> byte_dist(0, 255);
+
+  int current_state = 0; // Start in state 0 (no corruption)
+
+  // Process the packet block by block.
+  for (size_t block_start = 0; block_start < len; block_start += block_size) {
+    size_t block_end = std::min(block_start + block_size, len);
+    size_t block_length = block_end - block_start;
+
+    // Only corrupt if current state is non-zero.
+    if (current_state != 0) {
+      CorruptionParam param = corruption_params[current_state];
+      // Sample the number of bytes to corrupt using a Gaussian distribution.
+      std::normal_distribution<double> norm_dist(param.mean, param.std);
+      int corruption_size = static_cast<int>(std::round(norm_dist(rng)));
+      // Clamp corruption size to be at least 1 and at most the block length.
+      int block_corrupt_size = std::max(
+          1, std::min(corruption_size, static_cast<int>(block_length)));
+
+      // Choose a random starting index within the block.
+      std::uniform_int_distribution<size_t> start_index_dist(
+          0, block_length - block_corrupt_size);
+      size_t start_index = start_index_dist(rng);
+
+      // Overwrite the chosen segment with random bytes.
+      for (size_t i = start_index; i < start_index + block_corrupt_size; ++i) {
+        data[block_start + i] = static_cast<uint8_t>(byte_dist(rng));
+      }
+      error_occurred = true;
+    }
+
+    // Update the state using the transition matrix.
+    std::uniform_real_distribution<double> real_dist(0.0, 1.0);
+    double p = real_dist(rng);
+    double cumulative = 0.0;
+    int next_state = 0;
+    for (int state = 0; state < NUM_STATES; ++state) {
+      cumulative += transition_matrix[current_state][state];
+      if (p < cumulative) {
+        next_state = state;
+        break;
+      }
+    }
+    current_state = next_state;
   }
 
-  return true;
+  return error_occurred;
 }
 
 // The simulation function that applies delay, and bit corruption.
