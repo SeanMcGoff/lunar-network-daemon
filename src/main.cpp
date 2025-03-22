@@ -12,8 +12,10 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "ConfigManager.hpp"
 #include "IptablesManager.hpp"
 #include "NetfilterQueue.hpp"
+#include "TcNetemManager.hpp"
 #include "configs.hpp"
 
 void signalHandler(int signal);
@@ -27,8 +29,14 @@ int main() {
   try {
     setupSignalHandlers();
 
+    // create config manager
+    ConfigManager config_manager("config/config.json");
+
     // iptables class ensures teardown on destruction
     IptablesManager iptables;
+
+    // Set up TC/Netem rules, torn down on destruction
+    TcNetemManager tc_netem(config_manager);
 
     g_queue = std::make_unique<NetfilterQueue>();
 
