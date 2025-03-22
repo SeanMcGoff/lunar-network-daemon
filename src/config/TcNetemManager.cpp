@@ -83,4 +83,18 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  std::to_string(config.moon_to_moon.latency_jitter_ms) +
                  "ms 0% offset " +
                  std::to_string(config.moon_to_moon.latency_jitter_ms) + "ms");
+
+  // Add filters to match packets based on netfilter marks
+  executeCommand("tc filter add dev " + WG_INTERFACE +
+                 " parent 1: protocol ip prio 1 handle " +
+                 std::to_string(MARK_EARTH_TO_EARTH) + " fw flowid 1:1");
+  executeCommand("tc filter add dev " + WG_INTERFACE +
+                 " parent 1: protocol ip prio 1 handle " +
+                 std::to_string(MARK_EARTH_TO_MOON) + " fw flowid 1:2");
+  executeCommand("tc filter add dev " + WG_INTERFACE +
+                 " parent 1: protocol ip prio 1 handle " +
+                 std::to_string(MARK_MOON_TO_EARTH) + " fw flowid 1:3");
+  executeCommand("tc filter add dev " + WG_INTERFACE +
+                 " parent 1: protocol ip prio 1 handle " +
+                 std::to_string(MARK_MOON_TO_MOON) + " fw flowid 1:4");
 }
