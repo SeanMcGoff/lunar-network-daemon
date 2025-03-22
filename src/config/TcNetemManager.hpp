@@ -11,4 +11,5 @@ public:
 
 private:
   void executeCommand(const std::string &command);
+  void setupTcRules(const ConfigManager &config_manager);
 };
