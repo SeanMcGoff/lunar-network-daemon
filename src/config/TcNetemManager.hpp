@@ -8,4 +8,7 @@ class TcNetemManager {
 public:
   TcNetemManager(const ConfigManager &config_manager);
   ~TcNetemManager();
+
+private:
+  void executeCommand(const std::string &command);
 };
