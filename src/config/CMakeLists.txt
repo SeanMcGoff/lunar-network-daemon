@@ -17,7 +17,9 @@ add_library(config STATIC
     ConfigManager.hpp
     configs.hpp
     IptablesManager.hpp
-    IptablesManager.cpp)
+    IptablesManager.cpp
+    TcNetemManager.hpp
+    TcNetemManager.cpp)
 
 target_include_directories(config PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

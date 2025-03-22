@@ -17,6 +17,11 @@ TcNetemManager::TcNetemManager(const ConfigManager &config_manager) {
   }
 }
 
+// keeping destructor and teardownTcRules separate because I want to
+// poll if configmanager has changed every now and then to make sure
+// the TC rules are true to the current json file
+TcNetemManager::~TcNetemManager() { teardownTcRules(); }
+
 void TcNetemManager::executeCommand(const std::string &command) {
   std::cout << "Executing: " << command << "\n";
   int result = system(command.c_str());

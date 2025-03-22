@@ -181,7 +181,7 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     std::cout << "Packet received!\n";
     std::cout << "ID: " << id;
     std::cout << "\nClassification: " << packet.getLinkTypeName();
-    std::cout << "\nSize: " << payload_len << " bytes\n";
+    std::cout << "\nSize: " << payload_len << " bytes";
     std::cout << "\nApplying mark: " << new_mark << "\n";
 
     ///////////////////////////////////////////////////////////////////
