@@ -30,6 +30,9 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
   // get configurations
   Config config = config_manager.getConfig();
 
+  // make sure netem is running
+  executeCommand("modprobe sch_netem");
+
   // In another life, we would limit the throughput on a rover by rover basis
   // But fuck that
   const std::string default_rate = "1000Mbit";
