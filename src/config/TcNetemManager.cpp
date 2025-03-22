@@ -6,7 +6,7 @@
 #include <string>
 
 void TcNetemManager::executeCommand(const std::string &command) {
-  std::cout << "Executing: " << command << "\n;";
+  std::cout << "Executing: " << command << "\n";
   int result = system(command.c_str());
   if (result != 0) {
     throw std::runtime_error("Command failed: " + command +
@@ -87,14 +87,18 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
   // Add filters to match packets based on netfilter marks
   executeCommand("tc filter add dev " + WG_INTERFACE +
                  " parent 1: protocol ip prio 1 handle " +
-                 std::to_string(MARK_EARTH_TO_EARTH) + " fw flowid 1:1");
+                 std::to_string(MARK_EARTH_TO_EARTH) +
+                 " fw flowid 1:" + std::to_string(MARK_EARTH_TO_EARTH));
   executeCommand("tc filter add dev " + WG_INTERFACE +
                  " parent 1: protocol ip prio 1 handle " +
-                 std::to_string(MARK_EARTH_TO_MOON) + " fw flowid 1:2");
+                 std::to_string(MARK_EARTH_TO_MOON) +
+                 " fw flowid 1:" + std::to_string(MARK_EARTH_TO_MOON));
   executeCommand("tc filter add dev " + WG_INTERFACE +
                  " parent 1: protocol ip prio 1 handle " +
-                 std::to_string(MARK_MOON_TO_EARTH) + " fw flowid 1:3");
+                 std::to_string(MARK_MOON_TO_EARTH) +
+                 " fw flowid 1:" + std::to_string(MARK_MOON_TO_EARTH));
   executeCommand("tc filter add dev " + WG_INTERFACE +
                  " parent 1: protocol ip prio 1 handle " +
-                 std::to_string(MARK_MOON_TO_MOON) + " fw flowid 1:4");
+                 std::to_string(MARK_MOON_TO_MOON) +
+                 " fw flowid 1:" + std::to_string(MARK_MOON_TO_MOON));
 }
