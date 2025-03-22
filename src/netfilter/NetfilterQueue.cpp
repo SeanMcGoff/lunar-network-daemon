@@ -156,19 +156,41 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     ///////////////////////////////////////////////////////////////////
 
     // PACKET PROCESSING LOGIC
-    // Just printing classification for now
 
+    // Apply mark based on link type
+    uint32_t new_mark = 0;
+    switch (packet.getLinkType()) {
+    case Packet::LinkType::EARTH_TO_EARTH:
+      new_mark = MARK_EARTH_TO_EARTH;
+      break;
+    case Packet::LinkType::EARTH_TO_MOON:
+      new_mark = MARK_EARTH_TO_MOON;
+      break;
+    case Packet::LinkType::MOON_TO_EARTH:
+      new_mark = MARK_MOON_TO_EARTH;
+      break;
+    case Packet::LinkType::MOON_TO_MOON:
+      new_mark = MARK_MOON_TO_MOON;
+      break;
+    default:
+      new_mark = 0; // Unclassified traffic gets no mark
+      break;
+    }
+
+    // Some debugging output for now
     std::cout << "Packet received!\n";
     std::cout << "ID: " << id;
     std::cout << "\nClassification: " << packet.getLinkTypeName();
-    std::cout << "\nSize: " << payload_len << " bytes\n";
+    std::cout << "\nSize: " << payload_len << " bytes";
+    std::cout << "\nApplying mark: " << new_mark << "\n";
 
     ///////////////////////////////////////////////////////////////////
 
-    // currently just accepting everything but that will change later
-    return nfq_set_verdict(qh, id, NF_ACCEPT, payload_len, packet_data);
+    // using packet.getData() in case the packet was modified
+    return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, packet.getLength(),
+                            packet.getData());
   } catch (std::exception &error) {
     std::cerr << "Error processing packet: " << error.what() << "\n";
-    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, nullptr);
+    return nfq_set_verdict2(qh, id, NF_ACCEPT, MARK_EARTH_TO_EARTH, 0, nullptr);
   }
 }
