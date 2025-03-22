@@ -43,6 +43,8 @@ int main() {
     // blocks until stopped by signal
     g_queue->run();
 
+    std::cout << "Shutting down.\n";
+
     // Clean up the queue
     g_queue.reset();
 
@@ -55,7 +57,6 @@ int main() {
 }
 
 void signalHandler(int signal) {
-  std::cout << "Received signal " << signal << ", shutting down.\n";
   if (g_queue) {
     g_queue->stop();
   }
