@@ -2,8 +2,20 @@
 
 #include "TcNetemManager.hpp"
 #include "configs.hpp"
+#include <exception>
 #include <iostream>
 #include <string>
+
+TcNetemManager::TcNetemManager(const ConfigManager &config_manager) {
+  std::cout << "Setting up TC/Netem rules for " << WG_INTERFACE << ".\n";
+  try {
+    setupTcRules(config_manager);
+  } catch (const std::exception &error) {
+    std::cerr << "Error setting up TC/Netem rules: " << error.what() << "\n";
+    teardownTcRules();
+    throw;
+  }
+}
 
 void TcNetemManager::executeCommand(const std::string &command) {
   std::cout << "Executing: " << command << "\n";
@@ -101,4 +113,12 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " parent 1: protocol ip prio 1 handle " +
                  std::to_string(MARK_MOON_TO_MOON) +
                  " fw flowid 1:" + std::to_string(MARK_MOON_TO_MOON));
+}
+
+void TcNetemManager::teardownTcRules() {
+  try {
+    executeCommand("tc qdisc del dev " + WG_INTERFACE + " root");
+  } catch (const std::exception &error) {
+    std::cerr << "Warning: Failed to remove TC rules: " << error.what() << "\n";
+  }
 }
