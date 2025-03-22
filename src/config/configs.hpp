@@ -47,3 +47,9 @@ constexpr int MAX_PACKET_SIZE = 65536;          // 64KB max packet size
 
 // Interface name
 const std::string WG_INTERFACE = "wg0";
+
+// netfilter marks for each link type
+constexpr uint32_t MARK_EARTH_TO_EARTH = 1;
+constexpr uint32_t MARK_EARTH_TO_MOON = 2;
+constexpr uint32_t MARK_MOON_TO_EARTH = 3;
+constexpr uint32_t MARK_MOON_TO_MOON = 4;
