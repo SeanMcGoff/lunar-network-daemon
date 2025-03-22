@@ -11,12 +11,12 @@ IptablesManager::IptablesManager() {
   // incoming) interface is wg0 -j NFQUEUE: "Jump" to the NFQUEUE target (ie.
   // hand off to NFQUEUE instead of dropping or accepting)
   // --queue-num 0: Put packets into queue number 0.
-  executeCommand("iptables -A FORWARD -i " + WG_INTERFACE +
+  executeCommand("iptables -I FORWARD 1 -i " + WG_INTERFACE +
                  " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
 
   try {
     // Forward outgoing wireguard traffic to nfqueue
-    executeCommand("iptables -A FORWARD -o " + WG_INTERFACE +
+    executeCommand("iptables -I FORWARD 2 -o " + WG_INTERFACE +
                    " -j NFQUEUE --queue-num " + std::to_string(QUEUE_NUM));
   } catch (const std::exception &error) {
     // Clean up if second rule fails
