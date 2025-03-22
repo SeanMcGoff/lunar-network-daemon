@@ -56,8 +56,8 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " parent 1: classid 1:" + std::to_string(MARK_MOON_TO_MOON) +
                  " htb rate " + default_rate + " ceil " + default_rate);
 
+  // Example command:
   // tc qdisc add dev wg0 parent 1:1 handle 10: netem delay 1300ms 50ms 0%
-  // offset 50ms
 
   // EARTH_TO_EARTH
   executeCommand("tc qdisc add dev " + WG_INTERFACE +
@@ -65,9 +65,7 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " handle 10: netem delay " +
                  std::to_string(config.earth_to_earth.base_latency_ms) + "ms " +
                  std::to_string(config.earth_to_earth.latency_jitter_ms) +
-                 "ms 0% offset " +
-                 std::to_string(config.earth_to_earth.latency_jitter_ms) +
-                 "ms");
+                 "ms 0%");
 
   // EARTH_TO_MOON
   executeCommand("tc qdisc add dev " + WG_INTERFACE +
@@ -75,8 +73,7 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " handle 20: netem delay " +
                  std::to_string(config.earth_to_moon.base_latency_ms) + "ms " +
                  std::to_string(config.earth_to_moon.latency_jitter_ms) +
-                 "ms 0% offset " +
-                 std::to_string(config.earth_to_moon.latency_jitter_ms) + "ms");
+                 "ms 0%");
 
   // MOON_TO_EARTH
   executeCommand("tc qdisc add dev " + WG_INTERFACE +
@@ -84,8 +81,7 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " handle 30: netem delay " +
                  std::to_string(config.moon_to_earth.base_latency_ms) + "ms " +
                  std::to_string(config.moon_to_earth.latency_jitter_ms) +
-                 "ms 0% offset " +
-                 std::to_string(config.moon_to_earth.latency_jitter_ms) + "ms");
+                 "ms 0%");
 
   // MOON_TO_MOON
   executeCommand("tc qdisc add dev " + WG_INTERFACE +
@@ -93,8 +89,7 @@ void TcNetemManager::setupTcRules(const ConfigManager &config_manager) {
                  " handle 40: netem delay " +
                  std::to_string(config.moon_to_moon.base_latency_ms) + "ms " +
                  std::to_string(config.moon_to_moon.latency_jitter_ms) +
-                 "ms 0% offset " +
-                 std::to_string(config.moon_to_moon.latency_jitter_ms) + "ms");
+                 "ms 0%");
 
   // Add filters to match packets based on netfilter marks
   executeCommand("tc filter add dev " + WG_INTERFACE +
