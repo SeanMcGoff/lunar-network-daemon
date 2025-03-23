@@ -1,0 +1,37 @@
+version: "3.8" # Specify the Docker Compose version
+
+services:
+  # Define the Lunar Network Daemon service
+  lunar-network-daemon:
+    build:
+      context: . # Use the current directory as the build context
+      dockerfile: Dockerfile # Specify the Dockerfile to use
+    deploy:
+      replicas: 4 # Run four instances of the daemon for scalability
+    networks:
+      - backend # Attach the service to the backend network
+    expose:
+      - "8080" # Expose port 8080 (internal use only)
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ] # Check if the daemon's health endpoint is accessible
+      interval: 30s # Run the check every 30 seconds
+      timeout: 10s # Allow up to 10 seconds for the health check
+      retries: 3 # Mark as unhealthy after 3 failed checks
+
+  # Define the Nginx reverse proxy service
+  nginx:
+    image: nginx # Use the official Nginx image
+    depends_on:
+      lunar-network-daemon:
+        condition: service_healthy # Wait until the daemon is healthy before starting Nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount the custom Nginx configuration file as read-only
+    ports:
+      - "80:80" # Map port 80 on the host to port 80 in the container
+    networks:
+      - backend # Attach to the backend network
+    restart: always # Restart automatically if it stops
+
+# Define a shared network for internal communication between services
+networks:
+  backend:
