@@ -59,7 +59,7 @@ class ConfigManager {
 public:
   ConfigManager(const std::string &config_file);
 
-  Config getConfig();
+  Config getConfig() const;
   Config::LinkProperties getEToEConfig();
   Config::LinkProperties getEToMConfig();
   Config::LinkProperties getMToEConfig();

@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
-      run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libnetfilter-queue-dev
+      run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libnetfilter-queue-dev iproute2
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}

@@ -33,7 +33,7 @@ ConfigManager::ConfigManager(const std::string &config_file)
   }
 }
 
-Config ConfigManager::getConfig() {
+Config ConfigManager::getConfig() const {
   // shared lock, multiple threads can read concurrently
   std::shared_lock<std::shared_mutex> lock(config_mutex_);
   return config_;
