@@ -148,7 +148,7 @@ void loadLinkProperties(const nm::json &j, Config::LinkProperties &props,
   props.bit_error_rate_stddev = getDoubleWithLog(
       j, "bit_error_rate_stddev", defaults.bit_error_rate_stddev);
   props.base_packet_loss_burst_freq_per_minute =
-      getDoubleWithLog(j, "base_packet_loss_burst_freq_per_hour",
+      getDoubleWithLog(j, "base_packet_loss_burst_freq_per_minute",
                        defaults.base_packet_loss_burst_freq_per_minute);
   props.packet_loss_burst_freq_stddev =
       getDoubleWithLog(j, "packet_loss_burst_freq_stddev",

@@ -1,5 +1,6 @@
 // src/netfilter/NetfilterQueue.cpp
 
+#include <cassert>
 #include <cerrno>
 #include <chrono>
 #include <csignal>
@@ -12,11 +13,11 @@
 #include <netinet/in.h>
 
 #include "NetfilterQueue.hpp"
-#include "Packet.hpp"
-#include "configs.hpp"
+#include <random>
 
-NetfilterQueue::NetfilterQueue()
-    : running_(true), handle_(nullptr, nfq_close),
+NetfilterQueue::NetfilterQueue(ConfigManager &config_manager)
+    : config_manager_(config_manager), running_(true),
+      handle_(nullptr, nfq_close),
       queue_handle_(nullptr, [](struct nfq_q_handle *qh) {
         if (qh) {
           std::cout << "Destroying queue.\n";
@@ -73,6 +74,17 @@ NetfilterQueue::NetfilterQueue()
 void NetfilterQueue::run() {
   std::cout << "Starting main packet processing loop.\n";
 
+  // Start burst error simulation threads
+  moon_to_earth_burst_thread_ =
+      std::thread(&NetfilterQueue::burstErrorSimulation, this,
+                  Packet::LinkType::MOON_TO_EARTH);
+  earth_to_moon_burst_thread_ =
+      std::thread(&NetfilterQueue::burstErrorSimulation, this,
+                  Packet::LinkType::EARTH_TO_MOON);
+  moon_to_moon_burst_thread_ =
+      std::thread(&NetfilterQueue::burstErrorSimulation, this,
+                  Packet::LinkType::MOON_TO_MOON);
+
   char buffer[MAX_PACKET_SIZE] __attribute__((aligned));
 
   while (running_) {
@@ -104,9 +116,27 @@ void NetfilterQueue::run() {
   }
 
   std::cout << "Exiting main packet processing loop.\n";
+
+  // Join threads
+  if (moon_to_earth_burst_thread_.joinable()) {
+    moon_to_earth_burst_thread_.join();
+  }
+
+  if (earth_to_moon_burst_thread_.joinable()) {
+    earth_to_moon_burst_thread_.join();
+  }
+
+  if (moon_to_moon_burst_thread_.joinable()) {
+    moon_to_moon_burst_thread_.join();
+  }
+
+  std::cout << "All burst simulation threads terminated.\n";
 }
 
-void NetfilterQueue::stop() { running_ = false; }
+void NetfilterQueue::stop() {
+  burst_threads_running_ = false;
+  running_ = false;
+}
 
 bool NetfilterQueue::isRunning() const { return running_; }
 
@@ -157,20 +187,24 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 
     // PACKET PROCESSING LOGIC
 
-    // Apply mark based on link type
+    // Apply mark and burst error_condition based on link type
     uint32_t new_mark = 0;
+    bool is_in_burst_error = false;
     switch (packet.getLinkType()) {
     case Packet::LinkType::EARTH_TO_EARTH:
       new_mark = MARK_EARTH_TO_EARTH;
       break;
     case Packet::LinkType::EARTH_TO_MOON:
       new_mark = MARK_EARTH_TO_MOON;
+      is_in_burst_error = burst_error_earth_to_moon_;
       break;
     case Packet::LinkType::MOON_TO_EARTH:
       new_mark = MARK_MOON_TO_EARTH;
+      is_in_burst_error = burst_error_moon_to_earth_;
       break;
     case Packet::LinkType::MOON_TO_MOON:
       new_mark = MARK_MOON_TO_MOON;
+      is_in_burst_error = burst_error_moon_to_moon_;
       break;
     default:
       new_mark = 0; // Unclassified traffic gets no mark
@@ -186,6 +220,12 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 
     ///////////////////////////////////////////////////////////////////
 
+    // If the link types' burst mode is enabled, drop the packet
+    if (is_in_burst_error) {
+      return nfq_set_verdict2(qh, id, NF_DROP, new_mark, packet.getLength(),
+                              packet.getData());
+    }
+
     // using packet.getData() in case the packet was modified
     return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, packet.getLength(),
                             packet.getData());
@@ -193,4 +233,82 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
     std::cerr << "Error processing packet: " << error.what() << "\n";
     return nfq_set_verdict2(qh, id, NF_ACCEPT, MARK_EARTH_TO_EARTH, 0, nullptr);
   }
+}
+
+void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
+
+  // Get the correct burst_error atomic variable based on the link type
+  std::atomic<bool> &burst_error_mode = [this,
+                                         link_type]() -> std::atomic<bool> & {
+    switch (link_type) {
+    case Packet::LinkType::EARTH_TO_MOON:
+      return burst_error_earth_to_moon_;
+    case Packet::LinkType::MOON_TO_EARTH:
+      return burst_error_moon_to_earth_;
+    case Packet::LinkType::MOON_TO_MOON:
+      return burst_error_moon_to_moon_;
+    default:
+      // This should never happen, but just in case
+      throw std::invalid_argument(
+          "Invalid link type for burst error simulation.");
+    }
+  }();
+
+  // Get the link properties for the current link type
+  Config::LinkProperties props = [this, link_type]() -> Config::LinkProperties {
+    switch (link_type) {
+    case Packet::LinkType::EARTH_TO_MOON:
+      return config_manager_.getEToMConfig();
+    case Packet::LinkType::MOON_TO_EARTH:
+      return config_manager_.getMToEConfig();
+    case Packet::LinkType::MOON_TO_MOON:
+      return config_manager_.getMToMConfig();
+    default:
+      // This also should never happen, but just in case
+      throw std::invalid_argument(
+          "Invalid link type for burst error simulation.");
+    }
+  }();
+
+  // Random number generator for burst error simulation
+  std::mt19937 random_generator(time(0));
+
+  // Initialize the burst error mode
+  burst_error_mode = false;
+
+  std::normal_distribution<double> freq_dist(
+      props.base_packet_loss_burst_freq_per_minute,
+      props.packet_loss_burst_freq_stddev);
+
+  std::normal_distribution<double> burst_dist(
+      props.base_packet_loss_burst_duration_ms,
+      props.base_packet_loss_burst_duration_stddev);
+
+  // Define the burst error simulation parameters
+  uint64_t ms_to_next_burst, ms_burst_duration;
+
+  while (burst_threads_running_) {
+    // Generate random values for the frequency and duration
+    ms_to_next_burst =
+        static_cast<uint64_t>(6000.0 / freq_dist(random_generator));
+    ms_burst_duration = static_cast<uint64_t>(burst_dist(random_generator));
+
+    // Sleep for the next burst duration
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms_to_next_burst));
+
+    // Check if the thread should stop
+    if (!burst_threads_running_)
+      break;
+
+    // Enable burst error mode
+    burst_error_mode = true;
+
+    // Sleep for the burst duration
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms_burst_duration));
+
+    burst_error_mode = false;
+  }
+
+  // Reset the burst error mode
+  burst_error_mode = false;
 }

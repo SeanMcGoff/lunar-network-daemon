@@ -38,7 +38,7 @@ int main() {
     // Set up TC/Netem rules, torn down on destruction
     TcNetemManager tc_netem(config_manager);
 
-    g_queue = std::make_unique<NetfilterQueue>();
+    g_queue = std::make_unique<NetfilterQueue>(config_manager);
 
     // blocks until stopped by signal
     g_queue->run();
