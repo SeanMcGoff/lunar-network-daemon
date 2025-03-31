@@ -77,6 +77,10 @@ private:
   std::atomic<bool> burst_error_moon_to_earth_, burst_error_earth_to_moon_,
       burst_error_moon_to_moon_;
 
+  // Burst error simulation mutexes and condition variables
+  std::mutex moon_to_earth_cv_mutex_, earth_to_moon_cv_mutex_, moon_to_moon_cv_mutex_;
+  std::condition_variable moon_to_earth_cv_, earth_to_moon_cv_, moon_to_moon_cv_;
+
   // thread safe flag for controlling the processing loop
   std::atomic<bool> running_;
 

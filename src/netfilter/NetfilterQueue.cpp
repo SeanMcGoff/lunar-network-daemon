@@ -16,7 +16,10 @@
 #include <random>
 
 NetfilterQueue::NetfilterQueue(ConfigManager &config_manager)
-    : config_manager_(config_manager), running_(true),
+    : config_manager_(config_manager), burst_error_moon_to_earth_(false),
+      burst_error_earth_to_moon_(false), burst_error_moon_to_moon_(false),
+      running_(true), burst_threads_running_(false),
+      // Initialize handles with custom deleters
       handle_(nullptr, nfq_close),
       queue_handle_(nullptr, [](struct nfq_q_handle *qh) {
         if (qh) {
@@ -75,6 +78,7 @@ void NetfilterQueue::run() {
   std::cout << "Starting main packet processing loop.\n";
 
   // Start burst error simulation threads
+  burst_threads_running_ = true;
   moon_to_earth_burst_thread_ =
       std::thread(&NetfilterQueue::burstErrorSimulation, this,
                   Packet::LinkType::MOON_TO_EARTH);
@@ -136,6 +140,11 @@ void NetfilterQueue::run() {
 void NetfilterQueue::stop() {
   burst_threads_running_ = false;
   running_ = false;
+
+  // Notify all waiting threads to check their conditions
+  moon_to_earth_cv_.notify_all();
+  earth_to_moon_cv_.notify_all();
+  moon_to_moon_cv_.notify_all();
 }
 
 bool NetfilterQueue::isRunning() const { return running_; }
@@ -236,7 +245,6 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 }
 
 void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
-
   // Get the correct burst_error atomic variable based on the link type
   std::atomic<bool> &burst_error_mode = [this,
                                          link_type]() -> std::atomic<bool> & {
@@ -248,7 +256,36 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
     case Packet::LinkType::MOON_TO_MOON:
       return burst_error_moon_to_moon_;
     default:
-      // This should never happen, but just in case
+      throw std::invalid_argument(
+          "Invalid link type for burst error simulation.");
+    }
+  }();
+
+  // Select the appropriate mutex and condition variable based on link type
+  std::mutex &cv_mutex = [this, link_type]() -> std::mutex & {
+    switch (link_type) {
+    case Packet::LinkType::EARTH_TO_MOON:
+      return earth_to_moon_cv_mutex_;
+    case Packet::LinkType::MOON_TO_EARTH:
+      return moon_to_earth_cv_mutex_;
+    case Packet::LinkType::MOON_TO_MOON:
+      return moon_to_moon_cv_mutex_;
+    default:
+      throw std::invalid_argument(
+          "Invalid link type for burst error simulation.");
+    }
+  }();
+
+  std::condition_variable &cv = [this,
+                                 link_type]() -> std::condition_variable & {
+    switch (link_type) {
+    case Packet::LinkType::EARTH_TO_MOON:
+      return earth_to_moon_cv_;
+    case Packet::LinkType::MOON_TO_EARTH:
+      return moon_to_earth_cv_;
+    case Packet::LinkType::MOON_TO_MOON:
+      return moon_to_moon_cv_;
+    default:
       throw std::invalid_argument(
           "Invalid link type for burst error simulation.");
     }
@@ -264,7 +301,6 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
     case Packet::LinkType::MOON_TO_MOON:
       return config_manager_.getMToMConfig();
     default:
-      // This also should never happen, but just in case
       throw std::invalid_argument(
           "Invalid link type for burst error simulation.");
     }
@@ -293,18 +329,33 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
         static_cast<uint64_t>(6000.0 / freq_dist(random_generator));
     ms_burst_duration = static_cast<uint64_t>(burst_dist(random_generator));
 
-    // Sleep for the next burst duration
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms_to_next_burst));
+    // Sleep until next burst or until interrupted
+    {
+      std::unique_lock<std::mutex> lock(cv_mutex);
+      if (cv.wait_for(lock, std::chrono::milliseconds(ms_to_next_burst),
+                      [this] { return !burst_threads_running_; })) {
+        // If predicate returns true, it means we were interrupted
+        break;
+      }
+    }
 
-    // Check if the thread should stop
+    // Check again if the thread should stop
     if (!burst_threads_running_)
       break;
 
     // Enable burst error mode
     burst_error_mode = true;
 
-    // Sleep for the burst duration
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms_burst_duration));
+    // Sleep for the burst duration or until interrupted
+    {
+      std::unique_lock<std::mutex> lock(cv_mutex);
+      if (cv.wait_for(lock, std::chrono::milliseconds(ms_burst_duration),
+                      [this] { return !burst_threads_running_; })) {
+        // If predicate returns true, it means we were interrupted
+        burst_error_mode = false;
+        break;
+      }
+    }
 
     burst_error_mode = false;
   }
