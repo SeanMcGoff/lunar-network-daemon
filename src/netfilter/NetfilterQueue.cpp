@@ -14,6 +14,7 @@
 
 #include "NetfilterQueue.hpp"
 #include <random>
+#include <set>
 
 NetfilterQueue::NetfilterQueue(ConfigManager &config_manager)
     : config_manager_(config_manager), burst_error_moon_to_earth_(false),
@@ -235,6 +236,37 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
                               packet.getData());
     }
 
+    // Get link properties for bit error simulation
+    Config::LinkProperties props;
+    switch (packet.getLinkType()) {
+    case Packet::LinkType::EARTH_TO_EARTH:
+      props = config_manager_.getEToEConfig();
+      break;
+    case Packet::LinkType::EARTH_TO_MOON:
+      props = config_manager_.getEToMConfig();
+      break;
+    case Packet::LinkType::MOON_TO_EARTH:
+      props = config_manager_.getMToEConfig();
+      break;
+    case Packet::LinkType::MOON_TO_MOON:
+      props = config_manager_.getMToMConfig();
+      break;
+    default:
+      // Use earth to earth as default for unclassified traffic
+      props = config_manager_.getEToEConfig();
+      break;
+    }
+
+    // Apply bit errors if configured
+    if (props.base_bit_error_rate > 0) {
+      // Create a copy of the packet data for modification
+      std::vector<uint8_t> modifiedData = applyBitErrors(packet, props);
+
+      // Use the modified data in the verdict
+      return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, modifiedData.size(),
+                              modifiedData.data());
+    }
+
     // using packet.getData() in case the packet was modified
     return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, packet.getLength(),
                             packet.getData());
@@ -361,4 +393,82 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
 
   // Reset the burst error mode
   burst_error_mode = false;
+}
+
+std::vector<uint8_t>
+NetfilterQueue::applyBitErrors(Packet &packet,
+                               const Config::LinkProperties &props) {
+  // Create a copy of the packet data for modification
+  std::vector<uint8_t> modifiedData(packet.getData(),
+                                    packet.getData() + packet.getLength());
+
+  // If the packet is too small, skip modification
+  if (packet.getLength() < 20) {
+    return modifiedData;
+  }
+
+  // Verify this is an IPv4 packet
+  if ((modifiedData[0] >> 4) != 4) {
+    return modifiedData;
+  }
+
+  // Skip if bit error rate is zero
+  if (props.base_bit_error_rate <= 0.0) {
+    return modifiedData;
+  }
+
+  // Random number generator for bit error simulation
+  static std::mt19937 gen(std::random_device{}());
+
+  // Use normal distribution based on config parameters
+  std::normal_distribution<double> error_rate_dist(props.base_bit_error_rate,
+                                                   props.bit_error_rate_stddev);
+
+  // Get actual bit error rate for this packet
+  double actual_bit_error_rate = std::max(0.0, error_rate_dist(gen));
+
+  // Uniform distributions for bit flipping
+  std::uniform_real_distribution<> flip_dist(0.0, 1.0);
+  std::uniform_int_distribution<> bit_dist(0, 7);
+
+  // Calculate the size of the protected header
+  size_t protectedHeaderSize = 0;
+
+  // Section off IP header
+  uint8_t ip_header_len = (modifiedData[0] & 0x0F) * 4;
+  protectedHeaderSize = ip_header_len;
+
+  // Check IP protocol field for TCP or UDP
+  // to determine transport layer header size
+  if (packet.getLength() > ip_header_len) {
+    uint8_t protocol = modifiedData[9];
+
+    // TCP (protocol 6)
+    if (protocol == 6 && packet.getLength() >= ip_header_len + 20) {
+      uint8_t tcp_header_len =
+          ((modifiedData[ip_header_len + 12] >> 4) & 0x0F) * 4;
+      protectedHeaderSize += tcp_header_len;
+    }
+    // UDP (protocol 17)
+    else if (protocol == 17 && packet.getLength() >= ip_header_len + 8) {
+      protectedHeaderSize += 8;
+    }
+  }
+
+  // Ensure we don't exceed packet bounds
+  if (protectedHeaderSize >= packet.getLength()) {
+    return modifiedData;
+  }
+
+  // Do the bit flipping
+  for (size_t byte_index = protectedHeaderSize;
+       byte_index < modifiedData.size(); ++byte_index) {
+    for (int bit = 0; bit < 8; ++bit) {
+      if (flip_dist(gen) < actual_bit_error_rate) {
+        modifiedData[byte_index] ^= (1 << bit);
+      }
+    }
+  }
+
+  return modifiedData;
 }

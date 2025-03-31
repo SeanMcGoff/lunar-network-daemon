@@ -59,6 +59,10 @@ private:
   int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
                      struct nfq_data *nfa);
 
+  // Applies bit errors to the packet data
+  std::vector<uint8_t> applyBitErrors(Packet &packet,
+                                      const Config::LinkProperties &link_type);
+
   // This method will be called in a separate thread to simulate burst errors
   void burstErrorSimulation(const Packet::LinkType link_type);
 
@@ -77,8 +81,10 @@ private:
       burst_error_moon_to_moon_;
 
   // Burst error simulation mutexes and condition variables
-  std::mutex moon_to_earth_cv_mutex_, earth_to_moon_cv_mutex_, moon_to_moon_cv_mutex_;
-  std::condition_variable moon_to_earth_cv_, earth_to_moon_cv_, moon_to_moon_cv_;
+  std::mutex moon_to_earth_cv_mutex_, earth_to_moon_cv_mutex_,
+      moon_to_moon_cv_mutex_;
+  std::condition_variable moon_to_earth_cv_, earth_to_moon_cv_,
+      moon_to_moon_cv_;
 
   // thread safe flag for controlling the processing loop
   std::atomic<bool> running_;
