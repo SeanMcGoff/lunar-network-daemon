@@ -261,7 +261,7 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
     }
   }();
 
-  // Select the appropriate mutex and condition variable based on link type
+  // Get the correct mutex and condition variable based on the link type
   std::mutex &cv_mutex = [this, link_type]() -> std::mutex & {
     switch (link_type) {
     case Packet::LinkType::EARTH_TO_MOON:
@@ -291,7 +291,7 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
     }
   }();
 
-  // Get the link properties for the current link type
+  // Get the correct link properties based on the link type
   Config::LinkProperties props = [this, link_type]() -> Config::LinkProperties {
     switch (link_type) {
     case Packet::LinkType::EARTH_TO_MOON:
@@ -351,8 +351,6 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
       std::unique_lock<std::mutex> lock(cv_mutex);
       if (cv.wait_for(lock, std::chrono::milliseconds(ms_burst_duration),
                       [this] { return !burst_threads_running_; })) {
-        // If predicate returns true, it means we were interrupted
-        burst_error_mode = false;
         break;
       }
     }
