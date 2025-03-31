@@ -159,8 +159,6 @@ void loadLinkProperties(const nm::json &j, Config::LinkProperties &props,
   props.base_packet_loss_burst_duration_stddev =
       getDoubleWithLog(j, "base_packet_loss_burst_duration_stddev",
                        defaults.base_packet_loss_burst_duration_stddev);
-  props.throughput_limit_mbps = getDoubleWithLog(
-      j, "throughput_limit_mbps", defaults.throughput_limit_mbps);
 }
 
 // Helper function: Load a configuration section
