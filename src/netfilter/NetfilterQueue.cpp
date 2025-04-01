@@ -452,6 +452,10 @@ NetfilterQueue::applyBitErrors(Packet &packet,
     }
     // UDP (protocol 17)
     else if (protocol == 17 && packet.getLength() >= ip_header_len + 8) {
+      // If UDP, set the checksum to 0 to avoid checksum errors
+      modifiedData[ip_header_len + 6] = 0;
+      modifiedData[ip_header_len + 7] = 0;
+      // UDP header is 8 bytes
       protectedHeaderSize += 8;
     }
   }
