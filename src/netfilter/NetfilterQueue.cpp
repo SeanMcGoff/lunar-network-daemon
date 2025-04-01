@@ -357,8 +357,9 @@ void NetfilterQueue::burstErrorSimulation(const Packet::LinkType link_type) {
 
   while (burst_threads_running_) {
     // Generate random values for the frequency and duration
+    // ms/burst error = 60s * 1000ms / (burst error/min)
     ms_to_next_burst = static_cast<uint64_t>(
-        std::max(6000.0 / freq_dist(random_generator), 0.0));
+        std::max((60.0 * 1000.0) / freq_dist(random_generator), 0.0));
     ms_burst_duration =
         static_cast<uint64_t>(std::max(burst_dist(random_generator), 0.0));
 
