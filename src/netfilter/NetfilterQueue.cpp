@@ -232,6 +232,8 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
 
     // If the link types' burst mode is enabled, drop the packet
     if (is_in_burst_error) {
+      std::cout << "Dropped packet due to burst error mode activated."
+                << std::endl;
       return nfq_set_verdict2(qh, id, NF_DROP, new_mark, packet.getLength(),
                               packet.getData());
     }
@@ -476,6 +478,7 @@ NetfilterQueue::applyBitErrors(Packet &packet,
     for (int bit = 0; bit < 8; ++bit) {
       if (flip_dist(gen) < actual_bit_error_rate) {
         modifiedData[byte_index] ^= (1 << bit);
+        std::cout << "Flipped a bit!" << std::endl;
       }
     }
   }
