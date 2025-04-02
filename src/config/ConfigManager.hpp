@@ -38,13 +38,10 @@ struct Config {
     double bit_error_rate_stddev;
 
     // Packet loss burst params
-    double base_packet_loss_burst_freq_per_hour;
+    double base_packet_loss_burst_freq_per_minute;
     double packet_loss_burst_freq_stddev;
     double base_packet_loss_burst_duration_ms;
     double base_packet_loss_burst_duration_stddev;
-
-    // Throughput limit (note: 0 = no limit)
-    double throughput_limit_mbps;
 
     auto operator<=>(const LinkProperties &) const = default;
   };

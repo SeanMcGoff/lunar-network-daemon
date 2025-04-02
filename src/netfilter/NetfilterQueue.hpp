@@ -23,18 +23,24 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <csignal>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
+
+#include "Packet.hpp"
+#include "configs.hpp"
 
 class NetfilterQueue {
   // NOTE: I'm using the very obtuse netfilter naming conventions for
   // convenience (easier to follow examples), I've explained it all (mostly) at
   // the bottom
 public:
-  NetfilterQueue();
+  NetfilterQueue(ConfigManager &config_manager);
   void run();
   void stop();
   bool isRunning() const;
@@ -53,11 +59,38 @@ private:
   int packetCallback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
                      struct nfq_data *nfa);
 
+  // Applies bit errors to the packet data
+  std::vector<uint8_t> applyBitErrors(Packet &packet,
+                                      const Config::LinkProperties &link_type);
+
+  // This method will be called in a separate thread to simulate burst errors
+  void burstErrorSimulation(const Packet::LinkType link_type);
+
   // file descriptor for netlink socket
   int fd_;
 
+  // ConfigManager instance for accessing config values
+  ConfigManager &config_manager_;
+
+  // Threads for timing burst errors given the config parameters
+  std::thread moon_to_earth_burst_thread_, earth_to_moon_burst_thread_,
+      moon_to_moon_burst_thread_;
+
+  // thread safe flags for controlling burst-error simulation
+  std::atomic<bool> burst_error_moon_to_earth_, burst_error_earth_to_moon_,
+      burst_error_moon_to_moon_;
+
+  // Burst error simulation mutexes and condition variables
+  std::mutex moon_to_earth_cv_mutex_, earth_to_moon_cv_mutex_,
+      moon_to_moon_cv_mutex_;
+  std::condition_variable moon_to_earth_cv_, earth_to_moon_cv_,
+      moon_to_moon_cv_;
+
   // thread safe flag for controlling the processing loop
   std::atomic<bool> running_;
+
+  // flag for controlling burst error simulation threads
+  std::atomic<bool> burst_threads_running_{true};
 
   // smart pointers for resource management
   std::unique_ptr<struct nfq_handle, decltype(&nfq_close)> handle_;
