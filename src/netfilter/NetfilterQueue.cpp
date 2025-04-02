@@ -262,8 +262,13 @@ int NetfilterQueue::packetCallback(struct nfq_q_handle *qh,
       // Create a copy of the packet data for modification
       std::vector<uint8_t> modifiedData = applyBitErrors(packet, props);
 
+      // hacky temporary fix?
+      size_t size = modifiedData.size();
+      while (modifiedData.size() % 4 != 0)
+        modifiedData.push_back(0);
+
       // Use the modified data in the verdict
-      return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, modifiedData.size(),
+      return nfq_set_verdict2(qh, id, NF_ACCEPT, new_mark, size,
                               modifiedData.data());
     }
 
